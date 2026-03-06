@@ -1,0 +1,1 @@
+export default function Spinner() { return <div className='size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin' /> }

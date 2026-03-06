@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareerSathi AI Chatbot</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ff6633",
+                        "background-light": "#f8f6f5",
+                        "background-dark": "#23140f",
+                        "cosmic-dark": "#1a0d0a", 
+                        "cosmic-accent": "#4b2b20",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                    backgroundImage: {
+                        'aurora-gradient': 'linear-gradient(135deg, #4b2b20 0%, #23140f 100%)',
+                        'flame-gradient': 'linear-gradient(135deg, #ff6633 0%, #ff8c33 100%)',
+                        'glass-gradient': 'linear-gradient(135deg, rgba(75, 43, 32, 0.6) 0%, rgba(35, 20, 15, 0.4) 100%)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #23140f; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b2b20; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff6633; 
+        }
+        
+        .glassmorphic {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-hidden selection:bg-primary selection:text-white">
+<div class="relative flex h-screen w-full flex-col overflow-hidden bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&amp;w=2072&amp;auto=format&amp;fit=crop')] bg-cover bg-center before:absolute before:inset-0 before:bg-background-dark/90 before:content-['']" data-alt="Deep space nebula background with stars">
+<!-- Header -->
+<header class="relative z-10 flex items-center justify-between border-b border-white/5 bg-cosmic-dark/50 px-6 py-4 backdrop-blur-md lg:px-10">
+<div class="flex items-center gap-4">
+<div class="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-orange-400 shadow-[0_0_15px_rgba(255,102,51,0.5)]">
+<span class="material-symbols-outlined text-white text-[24px]">smart_toy</span>
+</div>
+<div>
+<h2 class="text-xl font-bold leading-tight tracking-tight text-white">CareerSathi</h2>
+<p class="text-xs text-slate-400">Your AI Cosmic Guide</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex size-10 items-center justify-center rounded-full bg-white/5 text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-full bg-white/5 text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="ml-4 hidden h-8 w-[1px] bg-white/10 sm:block"></div>
+<div class="ml-2 flex items-center gap-3">
+<div class="hidden text-right sm:block">
+<p class="text-sm font-medium text-white">Aditi Sharma</p>
+<p class="text-xs text-primary">Class 12 • Science</p>
+</div>
+<div class="size-10 overflow-hidden rounded-full border-2 border-primary/30 bg-center bg-cover" data-alt="Portrait of a young indian female student" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBVm47ScEWsWsZ4qs7q__QE5zppLnwE9WWKpMvNoDmhwjgKWxWGquF-mXRdfRQKl2bxWKR8boTbXvBEzRqawoIXYOqaiFM83l8c0yPh_frEl6SZLKqWSgu6RpvYTOEfv_J7oZxKmigUoDn9wHEjNOMKEbUEGePChPkWhpuvyYULyqhJh2D3HHeJEP02UB2hoIgV9gSjporiANQWjsLp-VPOCfxt6WVRdz3JyoKYuD5ItF8Oi8NNGYWM3Fopt-E0jVGw-_-d_xfYA7c");'></div>
+</div>
+</div>
+</header>
+<!-- Main Chat Area -->
+<main class="relative z-10 flex flex-1 flex-col overflow-hidden">
+<div class="flex flex-1 flex-col overflow-y-auto px-4 py-6 md:px-20 lg:px-40 xl:px-60">
+<!-- Welcome Message -->
+<div class="mb-8 flex justify-center">
+<span class="rounded-full bg-white/5 px-4 py-1 text-xs font-medium text-slate-400 border border-white/5">Today, 4:20 PM</span>
+</div>
+<!-- Bot Message 1 -->
+<div class="mb-6 flex w-full max-w-[85%] items-end gap-3 md:max-w-[75%]">
+<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-orange-600 shadow-lg">
+<span class="material-symbols-outlined text-white text-[18px]">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="ml-1 text-xs text-primary">CareerSathi</span>
+<div class="glassmorphic rounded-2xl rounded-bl-sm bg-glass-gradient p-4 text-slate-100 shadow-md">
+<p class="leading-relaxed">Namaste Aditi! I am CareerSathi. Ready to explore the cosmos of careers? Ask me anything about streams, colleges, or future jobs!</p>
+</div>
+</div>
+</div>
+<!-- User Message 1 -->
+<div class="mb-6 flex w-full max-w-[85%] flex-row-reverse items-end gap-3 self-end md:max-w-[75%]">
+<div class="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-center bg-cover" data-alt="Portrait of a young indian female student" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDurtVdC60ZKOyphQAw6NZU4cp76Rl8ejtZ3qYDxCPbFAOhSC7c6pYt6w-hcD5vBGS3dRvhRRII7XiMDYvRCuQhNeG9tnLl2JoGqxwJKoC4D1HDq_HqPe3YD9Zaqm6cAcyOWrf5G2BBr4p_dYxYfzOXrvG-k_hUWRiuWI2QlR6ECMyL4AdRfru8NCZZrkWlykB0Dx1vPs9CJw9Uo13D6rlxfX_x6n74aVxZ3wleE5SJWiGIJguNvKxiK0p1WrEoK-0fr9zJZh3RAS8");'></div>
+<div class="flex flex-col items-end gap-1">
+<span class="mr-1 text-xs text-slate-400">You</span>
+<div class="rounded-2xl rounded-br-sm bg-flame-gradient p-4 text-white shadow-[0_4px_15px_rgba(255,102,51,0.2)]">
+<p class="leading-relaxed">I am confused between Engineering and Design. Which one has better scope in India?</p>
+</div>
+</div>
+</div>
+<!-- Bot Message 2 -->
+<div class="mb-6 flex w-full max-w-[85%] items-end gap-3 md:max-w-[75%]">
+<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-orange-600 shadow-lg">
+<span class="material-symbols-outlined text-white text-[18px]">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="ml-1 text-xs text-primary">CareerSathi</span>
+<div class="glassmorphic rounded-2xl rounded-bl-sm bg-glass-gradient p-4 text-slate-100 shadow-md">
+<p class="leading-relaxed">Both are excellent paths! 🚀</p>
+<ul class="mt-2 list-disc space-y-2 pl-4 text-slate-200">
+<li><strong>Engineering (B.Tech):</strong> Offers vast opportunities in tech and core sectors. Solid stability.</li>
+<li><strong>Design (B.Des):</strong> Is booming with the rise of digital products and startups.</li>
+</ul>
+<p class="mt-3 leading-relaxed">It depends on whether you prefer logic &amp; problem-solving or creativity &amp; empathy. Shall we take a quick aptitude test?</p>
+</div>
+</div>
+</div>
+<!-- Typing Indicator -->
+<div class="mb-2 flex items-center gap-3">
+<div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-orange-600/20">
+<!-- Empty avatar placeholder for alignment -->
+</div>
+<div class="glassmorphic flex items-center gap-1 rounded-2xl rounded-bl-sm bg-white/5 px-4 py-3">
+<div class="size-2 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]"></div>
+<div class="size-2 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]"></div>
+<div class="size-2 animate-bounce rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Footer / Input Area -->
+<div class="bg-gradient-to-t from-background-dark via-background-dark to-transparent px-4 pb-6 pt-10 md:px-20 lg:px-40 xl:px-60">
+<div class="mx-auto flex w-full max-w-4xl flex-col gap-4">
+<!-- Suggestion Chips -->
+<div class="flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex shrink-0 items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm text-primary transition-colors hover:bg-primary/20 hover:text-white">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+                            Take Aptitude Test
+                        </button>
+<button class="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+<span class="material-symbols-outlined text-[18px]">school</span>
+                            Top Design Colleges
+                        </button>
+<button class="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+<span class="material-symbols-outlined text-[18px]">currency_rupee</span>
+                            Salary Comparison
+                        </button>
+<button class="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+                            Is YouTube a real career?
+                        </button>
+</div>
+<!-- Input Box -->
+<div class="relative flex items-center rounded-2xl bg-white/5 shadow-inner ring-1 ring-white/10 focus-within:bg-white/10 focus-within:ring-primary/50">
+<button class="ml-2 flex size-10 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-primary">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<input class="w-full border-none bg-transparent py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-0" placeholder="Ask about colleges, exams, or career paths..." type="text"/>
+<button class="mr-2 flex size-10 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-primary">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="mr-2 flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-[0_0_10px_rgba(255,102,51,0.4)] transition-transform hover:scale-105 active:scale-95">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+<p class="text-center text-[10px] text-slate-500">
+                        CareerSathi can make mistakes. Consider checking important info.
+                    </p>
+</div>
+</div>
+</main>
+</div>
+</body></html>

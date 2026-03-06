@@ -1,0 +1,1 @@
+export default function Header({ children, className = '' }) { return <header className={elative z-10 }>{children}</header> }

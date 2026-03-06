@@ -1,0 +1,1 @@
+export default function ExamTimeline({ exams = [] }) { return <ul className='list-disc pl-5 text-sm text-slate-200 space-y-1'>{exams.map((e) => <li key={e}>{e}</li>)}</ul> }
