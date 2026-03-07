@@ -3,14 +3,18 @@ import { Toaster } from 'react-hot-toast'
 import { lazy, Suspense } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import CustomCursor from './components/layout/CustomCursor.jsx'
+import BookmarksPanel from './components/career/BookmarksPanel.jsx'
+import CareerComparison from './components/career/CareerComparison.jsx'
+import useAppStore from './store/useAppStore.js'
+import { useCareers } from './hooks/useCareers.js'
 
-// Import PathMap directly to debug import errors
-import Splash from './screens/Splash.jsx'
-import StreamGuide from './screens/StreamGuide.jsx'
-import Quiz from './screens/Quiz.jsx'
-import ResultsLoading from './screens/ResultsLoading.jsx'
-import PathMap from './screens/PathMap.jsx'
-import Chat from './screens/Chat.jsx'
+// Route-based code splitting for improved initial performance
+const Splash = lazy(() => import('./screens/Splash'))
+const StreamGuide = lazy(() => import('./screens/StreamGuide'))
+const Quiz = lazy(() => import('./screens/Quiz'))
+const ResultsLoading = lazy(() => import('./screens/ResultsLoading'))
+const PathMap = lazy(() => import('./screens/PathMap'))
+const Chat = lazy(() => import('./screens/Chat'))
 
 function LoadingFallback() {
   return (
@@ -31,9 +35,23 @@ const router = createBrowserRouter([
 ])
 
 export default function App() {
+  const compareIds = useAppStore(s => s.compareIds)
+  const setCompareIds = useAppStore(s => s.setCompareIds)
+  const { data } = useCareers()
+  const careers = data?.careers || []
+  
+  const compareCareers = careers.filter(c => compareIds.includes(c.id))
+
   return (
     <ErrorBoundary>
       <CustomCursor />
+      <BookmarksPanel />
+      {compareIds.length === 2 && (
+        <CareerComparison 
+          careers={compareCareers} 
+          onClose={() => setCompareIds([])} 
+        />
+      )}
       <div className='font-sans bg-paper min-h-screen text-ink overflow-x-hidden selection:bg-accent-20'>
         <Toaster
           position='top-center'

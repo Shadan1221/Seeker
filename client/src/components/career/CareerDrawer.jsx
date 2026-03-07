@@ -16,7 +16,7 @@ export default function CareerDrawer({ career }) {
 
   const isBookmarked = bookmarkedCareers.includes(career.id)
 
-  const tabs = ['Overview', 'Education', 'Career Path', 'In India', 'Chat']
+  const tabs = ['Overview', 'Education', 'Career Path', 'In India', 'Hurdles', 'Subjects', 'Chat']
 
   return (
     <motion.div
@@ -118,6 +118,8 @@ export default function CareerDrawer({ career }) {
                     {activeTab === 'Education' && <TabEducation career={career} />}
                     {activeTab === 'Career Path' && <TabPath career={career} />}
                     {activeTab === 'In India' && <TabIndia career={career} />}
+                    {activeTab === 'Hurdles' && <TabHurdles career={career} />}
+                    {activeTab === 'Subjects' && <TabSubjects career={career} />}
                     {activeTab === 'Chat' && (
                        <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-surface/30 rounded-[32px] border border-ink-5">
                           <div className="w-20 h-20 rounded-full bg-accent/5 flex items-center justify-center mb-8">
@@ -393,4 +395,105 @@ function TabIndia({ career }) {
        </div>
     </div>
   )
+}
+
+function TabHurdles({ career }) {
+  if (!career.hurdles) return null;
+  
+  const difficultyClasses = {
+    'Extreme': 'bg-red-50 text-red-700 border border-red-200',
+    'Very Hard': 'bg-orange-50 text-orange-700 border border-orange-200',
+    'Hard': 'bg-amber-50 text-amber-700 border border-amber-200',
+    'Moderate': 'bg-green-50 text-green-700 border border-green-200'
+  };
+
+  const severityClasses = {
+    'Critical': 'bg-red-100 text-red-700',
+    'High': 'bg-amber-100 text-amber-700',
+    'Medium': 'bg-surface-dark/10 text-ink-60'
+  };
+
+  return (
+    <div className="pb-10">
+      <p className="font-serif italic text-[13px] text-accent mb-2">
+        "These are real challenges — not reasons to avoid this path. Knowing them in advance is the advantage."
+      </p>
+      
+      <div className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-4 ${difficultyClasses[career.hurdles.overall_difficulty] || ''}`}>
+        {career.hurdles.overall_difficulty}
+      </div>
+
+      <p className="font-sans text-[15px] text-ink-60 italic mb-6">
+        {career.hurdles.overall_note}
+      </p>
+
+      <div className="space-y-3">
+        {career.hurdles.items.map((item, i) => (
+          <div key={i} className="bg-surface rounded-xl p-4">
+            <div className="flex justify-between items-start">
+              <h4 className="font-sans font-semibold text-[15px] text-ink">{item.title}</h4>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${severityClasses[item.severity] || ''}`}>
+                {item.severity}
+              </span>
+            </div>
+            <p className="font-sans text-[14px] text-ink-60 leading-relaxed mt-2">
+              {item.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TabSubjects({ career }) {
+  if (!career.subjects) return null;
+
+  const relevanceClasses = {
+    'Core': 'bg-ink text-paper',
+    'Important': 'bg-surface-dark/20 text-ink',
+    'Helpful': 'bg-surface text-ink-60 border border-ink-10'
+  };
+
+  const renderDifficultyBar = (difficulty) => {
+    let filled = 0;
+    let color = 'bg-ink-10';
+    if (difficulty === 'Moderate') { filled = 2; color = 'bg-green-400'; }
+    else if (difficulty === 'Hard') { filled = 3; color = 'bg-amber-400'; }
+    else if (difficulty === 'Very Hard') { filled = 4; color = 'bg-accent'; }
+
+    return (
+      <div className="mt-2 flex gap-1 items-center">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= filled ? color : 'bg-ink-10'}`} />
+        ))}
+        <span className="text-[11px] text-ink-60 ml-2 whitespace-nowrap">{difficulty}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="pb-10">
+      <p className="font-sans text-[14px] text-ink-60 mb-5">
+        "Subjects that matter for this path — and how demanding each one is."
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {career.subjects.map((subject, i) => (
+          <div key={i} className="bg-surface rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between">
+              <h4 className="font-sans font-semibold text-[14px] text-ink">{subject.name}</h4>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tight ${relevanceClasses[subject.relevance] || ''}`}>
+                {subject.relevance}
+              </span>
+            </div>
+            {renderDifficultyBar(subject.difficulty)}
+            <p className="font-sans text-[12px] text-ink-60 leading-relaxed mt-2">
+              {subject.why}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

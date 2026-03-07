@@ -1,25 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion'
 import useAppStore from '../../store/useAppStore.js'
 
 export default function SeekerNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const [visible, setVisible] = useState(true)
-  const [lastY, setLastY] = useState(0)
+  const { scrollY } = useScroll()
+  const lastY = useRef(0)
+
   const bookmarkedCareers = useAppStore(s => s.bookmarkedCareers)
   const quizCompleted = useAppStore(s => s.quizCompleted)
+  const setBookmarksOpen = useAppStore(s => s.setBookmarksOpen)
 
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY
-      setVisible(y < lastY || y < 60)
-      setLastY(y)
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = lastY.current
+    if (latest > previous && latest > 150) {
+      setVisible(false)
+    } else {
+      setVisible(true)
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [lastY])
+    lastY.current = latest
+  })
 
   const isActive = (path) => location.pathname === path
 
@@ -63,17 +66,19 @@ export default function SeekerNav() {
             >
               Ask Seeker
             </button>
-            {bookmarkedCareers?.length > 0 && (
-              <button
-                onClick={() => navigate('/saved')}
-                className="relative flex items-center gap-1.5 text-sm text-ink-60"
-              >
-                <span className="material-symbols-outlined text-[18px]">bookmark</span>
+            
+            {/* Always show bookmarks button for better discovery */}
+            <button
+              onClick={() => setBookmarksOpen(true)}
+              className="relative flex items-center gap-1.5 text-sm text-ink-60 hover:text-accent transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">bookmark</span>
+              {bookmarkedCareers?.length > 0 && (
                 <span className="text-xs font-mono bg-accent text-white rounded-full w-4 h-4 flex items-center justify-center">
                   {bookmarkedCareers.length}
                 </span>
-              </button>
-            )}
+              )}
+            </button>
           </div>
         </motion.nav>
       )}

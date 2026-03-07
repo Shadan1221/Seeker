@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import useAppStore from '../store/useAppStore.js'
+import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 
 export default function ResultsLoading() {
   const navigate = useNavigate()
@@ -48,28 +49,58 @@ export default function ResultsLoading() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-paper text-ink overflow-hidden font-sans relative">
+      <FloatingPaths position={1} />
       {/* Background visual interest */}
       <div className="absolute inset-0 z-0 opacity-5 pointer-events-none bg-gradient-to-b from-accent to-transparent" />
       
       <div className="relative z-10 w-full max-w-md flex flex-col items-center">
         
-        <svg width="200" height="200" viewBox="0 0 200 200" fill="none" className="mb-12">
-           <motion.path
-             d="M 100 200 C 100 150, 150 100, 100 50 C 50 0, 100 0, 100 0"
-             stroke="#E8572A"
-             strokeWidth="4"
-             variants={pathVariants}
-             initial="hidden"
-             animate="visible"
-             strokeLinecap="round"
-           />
-           <motion.circle 
-             cx="100" cy="0" r="6" fill="#E8572A" 
-             initial={{ scale: 0 }} 
-             animate={{ scale: 1 }} 
-             transition={{ delay: 2.5, type: 'spring' }} 
-           />
-        </svg>
+        <div className="relative mb-12">
+          <svg width="200" height="300" viewBox="0 -30 100 150" fill="none">
+             {/* Curvy Mountain Path */}
+             <motion.path
+               d="M 50 110 Q 10 85 50 70 T 50 35 T 50 5"
+               stroke="#E8572A"
+               strokeWidth="2"
+               variants={pathVariants}
+               initial="hidden"
+               animate="visible"
+               strokeLinecap="round"
+               strokeLinejoin="round"
+             />
+
+             {/* Flag Pole and Banner */}
+             <motion.g
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: 2.2, duration: 0.5, type: "spring" }}
+             >
+               <line x1="50" y1="5" x2="50" y2="-10" stroke="#0D0D0D" strokeWidth="1.5" />
+               <motion.path 
+                 d="M 50 -10 L 65 -15 L 50 -20 Z" 
+                 fill="#E8572A"
+                 initial={{ scaleX: 0 }}
+                 animate={{ scaleX: 1 }}
+                 transition={{ delay: 2.5, duration: 0.3 }}
+               />
+             </motion.g>
+
+             {/* Hurdle markers at the 'valleys' */}
+             {[
+               { x: 30, y: 85, delay: 0.8 },
+               { x: 70, y: 45, delay: 1.6 }
+             ].map((h, i) => (
+               <motion.circle
+                 key={i}
+                 cx={h.x} cy={h.y} r="1.5"
+                 fill="#0D0D0D"
+                 initial={{ scale: 0, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 0.3 }}
+                 transition={{ delay: h.delay }}
+               />
+             ))}
+          </svg>
+        </div>
 
         <div className="text-center space-y-6">
           <motion.div 

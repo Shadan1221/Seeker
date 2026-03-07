@@ -69,7 +69,7 @@ export default function PathMap() {
   
   const [hoveredCluster, setHoveredCluster] = useState(null)
   const [hoveredCareer, setHoveredCareer] = useState(null)
-  const [filterMode, setFilterMode] = useState('all')
+  const [filterMode, setFilterMode] = useState(quizCompleted ? 'for-you' : 'all')
   const [search, setSearch] = useState('')
   const [expandedCluster, setExpandedCluster] = useState(null)
 

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import useAppStore from '../store/useAppStore.js'
 import { useChat } from '../hooks/useChat.js'
 import SeekerNav from '../components/layout/SeekerNav.jsx'
+import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import Icon from '../components/ui/Icon.jsx'
 
 const suggestionChips = [
@@ -40,10 +41,11 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-paper flex flex-col font-sans">
+    <div className="min-h-screen bg-paper flex flex-col font-sans relative overflow-hidden">
+      <FloatingPaths position={1} />
       <SeekerNav />
 
-      <main className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
+      <main className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32 relative z-10">
         {/* Header Area */}
         <div className="flex items-center justify-between mb-12 border-b border-ink-10 pb-6">
            <div className="flex items-baseline gap-4">
@@ -113,7 +115,7 @@ export default function Chat() {
       </main>
 
       {/* Input Area (Sticky Bottom) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-paper via-paper to-transparent pt-12 pb-8 px-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-paper via-paper to-transparent pt-12 pb-8 px-4 z-30">
         <div className="max-w-3xl mx-auto">
            {/* Suggestion Chips */}
            {chatMessages.length <= 1 && contextCareer && (

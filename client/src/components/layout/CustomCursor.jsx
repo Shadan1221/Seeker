@@ -5,54 +5,83 @@ export default function CustomCursor() {
   const ringRef = useRef(null)
 
   useEffect(() => {
+    // Only apply cursor: none on desktop/mouse devices
+    const isTouch = window.matchMedia('(pointer: coarse)').matches
+    if (!isTouch) {
+      document.body.style.cursor = 'none'
+    }
+
     const dot  = dotRef.current
     const ring = ringRef.current
     if (!dot || !ring) return
 
     let mouseX = 0, mouseY = 0
+    let dotX = 0, dotY = 0
     let ringX  = 0, ringY  = 0
     let raf
 
     const onMove = (e) => {
       mouseX = e.clientX
       mouseY = e.clientY
-      dot.style.left = `${mouseX}px`
-      dot.style.top  = `${mouseY}px`
     }
 
     const lerp = (a, b, t) => a + (b - a) * t
 
     const animate = () => {
-      ringX = lerp(ringX, mouseX, 0.12)
-      ringY = lerp(ringY, mouseY, 0.12)
-      ring.style.left = `${ringX}px`
-      ring.style.top  = `${ringY}px`
+      dotX = mouseX
+      dotY = mouseY
+      dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0)`
+      
+      ringX = lerp(ringX, mouseX, 0.15)
+      ringY = lerp(ringY, mouseY, 0.15)
+      ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`
+      
       raf = requestAnimationFrame(animate)
     }
 
-    const onEnter = () => ring.classList.add('hovering')
-    const onLeave = () => ring.classList.remove('hovering')
+    const onPointerOver = (e) => {
+      if (e.target.closest('a, button, input, textarea, [data-cursor]')) {
+        ring.classList.add('hovering')
+      } else {
+        ring.classList.remove('hovering')
+      }
+    }
 
-    document.addEventListener('mousemove', onMove)
-    document.querySelectorAll('a, button, [data-cursor]').forEach(el => {
-      el.addEventListener('mouseenter', onEnter)
-      el.addEventListener('mouseleave', onLeave)
-    })
+    window.addEventListener('mousemove', onMove, { passive: true })
+    window.addEventListener('pointerover', onPointerOver, { passive: true })
 
     animate()
     return () => {
-      document.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('pointerover', onPointerOver)
       cancelAnimationFrame(raf)
+      if (!isTouch) {
+        document.body.style.cursor = ''
+      }
     }
   }, [])
 
-  // Only show on non-touch devices
   if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) return null
 
   return (
     <>
-      <div ref={dotRef}  className="cursor-dot"  aria-hidden="true" />
-      <div ref={ringRef} className="cursor-ring" aria-hidden="true" />
+      {/* Restored default accent color (orange) and removed mix-blend-difference */}
+      <div 
+        ref={dotRef}  
+        className="fixed top-0 left-0 w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999]"
+        style={{ willChange: 'transform' }}
+        aria-hidden="true" 
+      />
+      <div 
+        ref={ringRef} 
+        className="fixed top-0 left-0 w-8 h-8 border border-accent rounded-full pointer-events-none z-[9998] transition-transform duration-300 ease-out"
+        style={{ 
+          willChange: 'transform',
+          marginLeft: '-13px',
+          marginTop: '-13px'
+        }}
+        aria-hidden="true" 
+      />
     </>
   )
 }
