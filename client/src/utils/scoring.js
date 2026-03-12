@@ -1,7 +1,7 @@
 import { QUIZ } from '../data/quiz.js'
 
-export function getMatchPercentage(career, answers) {
-  if (!answers || Object.keys(answers).length === 0) return 0
+export function getMatchPercentage(career, answers, customAnswers = {}) {
+  if ((!answers || Object.keys(answers).length === 0) && (!customAnswers || Object.keys(customAnswers).length === 0)) return 0
   
   // Build a frequency map of tags from the user's answers
   const tagMap = {}
@@ -16,6 +16,15 @@ export function getMatchPercentage(career, answers) {
     const weight = parseInt(qId) >= 9 ? 1.5 : 1.0
     
     option.tags.forEach(tag => {
+      tagMap[tag] = (tagMap[tag] || 0) + weight
+    })
+  })
+
+  // Add tags from custom AI-interpreted answers
+  Object.entries(customAnswers).forEach(([qId, data]) => {
+    if (!data || !data.tags || !Array.isArray(data.tags)) return
+    const weight = parseInt(qId) >= 9 ? 1.5 : 1.0
+    data.tags.forEach(tag => {
       tagMap[tag] = (tagMap[tag] || 0) + weight
     })
   })

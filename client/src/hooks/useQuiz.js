@@ -12,7 +12,7 @@ export function useScoreQuiz() {
   return useMutation({
     mutationFn: quizApi.scoreAnswers,
     onSuccess: (data) => {
-      setResults(data.recommendedCareers, data.scores)
+      setResults(data.recommendedCareers, data.scores || data.recommendedCareers, data.isMinimalData)
     },
   })
 }

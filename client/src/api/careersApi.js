@@ -6,4 +6,8 @@ export const careersApi = {
   getColleges: (careerId) => apiClient.get(`/careers/${careerId}/colleges`).then((r) => r.data.colleges),
   getRecommended: (ids) => apiClient.get('/careers', { params: { ids: ids.join(',') } }).then((r) => r.data),
   getStreams: () => apiClient.get('/streams').then((r) => r.data),
+  compare: (careerAId, careerBId) => apiClient.post('/careers/compare', { careerAId, careerBId }).then((r) => r.data),
 }
+
+export const compareCareers = (careerAId, careerBId) => 
+  apiClient.post('/careers/compare', { careerAId, careerBId }).then((r) => r.data)

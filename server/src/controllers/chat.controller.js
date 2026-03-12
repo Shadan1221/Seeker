@@ -2,8 +2,8 @@ import { getChatResponse, buildSystemPrompt } from '../services/openrouter.servi
 
 export async function sendMessage(req, res, next) {
   try {
-    const { messages, contextCareer } = req.validatedBody
-    const systemPrompt = buildSystemPrompt(contextCareer || null)
+    const { messages, contextCareer, quizContext } = req.body
+    const systemPrompt = buildSystemPrompt(contextCareer || null, quizContext || null)
     const cleanMessages = messages.map(({ role, content }) => ({ role, content }))
 
     const reply = await getChatResponse({ messages: cleanMessages, systemPrompt })

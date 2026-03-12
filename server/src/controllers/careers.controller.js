@@ -1,6 +1,7 @@
 import { CAREERS } from '../data/careers.js'
 import { COLLEGES } from '../data/colleges.js'
 import { STREAMS } from '../data/streams.js'
+import { buildComparison, getComparisonExplanation } from '../services/comparison.service.js'
 
 export function getAllCareers(req, res) {
   const { category, stream, ids } = req.query
@@ -32,6 +33,29 @@ export function getCareerById(req, res, next) {
   }
 
   return res.json({ career })
+}
+
+export async function compareCareers(req, res, next) {
+  try {
+    const { careerAId, careerBId } = req.body
+
+    const careerA = CAREERS.find(c => c.id === careerAId)
+    const careerB = CAREERS.find(c => c.id === careerBId)
+
+    if (!careerA || !careerB) {
+      return res.status(404).json({ error: 'One or both careers not found' })
+    }
+
+    // Build structured comparison from existing career data
+    const comparison = buildComparison(careerA, careerB)
+
+    // Get AI explanation
+    const aiExplanation = await getComparisonExplanation(careerA, careerB, comparison)
+
+    res.json({ careerA, careerB, comparison, aiExplanation })
+  } catch (err) {
+    next(err)
+  }
 }
 
 export function getCollegesByCareer(req, res) {

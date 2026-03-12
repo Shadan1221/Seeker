@@ -2473,9 +2473,9 @@ export const CAREERS = [
     title: "Game Developer",
     icon: "sports_esports",
     shortTitle: "Game Dev",
-    category: "Physical & Outdoors", // Placed here to balance the map visually as per prompt implied distribution
-    cluster: "Physical & Outdoors",
-    accent: "#0891B2",
+    category: "Technology & Data",
+    cluster: "Technology & Data",
+    accent: "#2563EB",
     tagline: "Engineering interactive digital worlds and entertainment experiences.",
     stream: "Science PCM or Any Stream",
     education: {

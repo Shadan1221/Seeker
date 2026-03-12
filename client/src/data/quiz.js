@@ -1,6 +1,7 @@
 export const QUIZ = [
   {
     id: 1,
+    skippable: true,
     icon: "self_improvement",
     question: "When you have a completely free Saturday with no obligations — what do you gravitate towards?",
     subtext: "Not what you think you should do. What you actually end up doing.",
@@ -16,6 +17,7 @@ export const QUIZ = [
   },
   {
     id: 2,
+    skippable: true,
     icon: "emoji_objects",
     question: "A close friend has a serious problem. What do you find yourself doing?",
     subtext: "Notice your instinct — not what you wish you did.",
@@ -31,6 +33,7 @@ export const QUIZ = [
   },
   {
     id: 3,
+    skippable: false,
     icon: "monitor_heart",
     question: "Which kind of achievement feels most satisfying to you personally?",
     subtext: "Not what sounds impressive. What actually gives you that quiet 'yes' feeling.",
@@ -46,6 +49,7 @@ export const QUIZ = [
   },
   {
     id: 4,
+    skippable: true,
     icon: "location_on",
     question: "You're most in your element when you're...",
     subtext: "Choose the environment where time genuinely disappears for you.",
@@ -61,6 +65,7 @@ export const QUIZ = [
   },
   {
     id: 5,
+    skippable: false,
     icon: "trending_up",
     question: "In ten years, what kind of life would feel genuinely successful to you?",
     subtext: "Strip away what impresses others. What does YOUR definition look like?",
@@ -76,6 +81,7 @@ export const QUIZ = [
   },
   {
     id: 6,
+    skippable: true,
     icon: "psychology_alt",
     question: "How do you prefer to learn something completely new?",
     subtext: "Think about the last time you actually learned something well.",
@@ -91,6 +97,7 @@ export const QUIZ = [
   },
   {
     id: 7,
+    skippable: false,
     icon: "balance",
     question: "When a decision involves real uncertainty — no guaranteed outcome — what do you do?",
     subtext: "This question is about your genuine default, not what you aspire to.",
@@ -106,6 +113,7 @@ export const QUIZ = [
   },
   {
     id: 8,
+    skippable: true,
     icon: "groups",
     question: "In a team working on something important, what role do you naturally end up in?",
     subtext: "Not the role you were assigned. The one you gravitate toward.",
@@ -121,6 +129,7 @@ export const QUIZ = [
   },
   {
     id: 9,
+    skippable: false,
     icon: "public",
     question: "What kind of problem would you most want to spend your life working on?",
     subtext: "Scale and domain — not necessarily your exact role in it.",
@@ -136,6 +145,7 @@ export const QUIZ = [
   },
   {
     id: 10,
+    skippable: false,
     icon: "school",
     question: "Honestly — which of these felt most like your territory in school?",
     subtext: "Not your best marks. The subjects you were actually curious about.",
@@ -151,6 +161,7 @@ export const QUIZ = [
   },
   {
     id: 11,
+    skippable: true,
     icon: "nightlife",
     question: "When a project is finally done and successful — what's the part that mattered most to you?",
     subtext: "The thing you'd want people to say, or that you'd think about quietly.",
@@ -166,6 +177,7 @@ export const QUIZ = [
   },
   {
     id: 12,
+    skippable: false,
     icon: "explore",
     question: "Which of these sentences describes something you've actually felt, even once?",
     subtext: "The one that has a small recognition in it — not the one you wish were true.",

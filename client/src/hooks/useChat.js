@@ -10,9 +10,9 @@ export function useChat() {
   const contextCareer = useAppStore((s) => s.contextCareer)
 
   const mutation = useMutation({
-    mutationFn: ({ userMessage }) => {
+    mutationFn: ({ userMessage, quizContext = null }) => {
       const messagesForApi = [...chatMessages.map(({ role, content }) => ({ role, content })), { role: 'user', content: userMessage }]
-      return chatApi.sendMessage({ messages: messagesForApi, contextCareer })
+      return chatApi.sendMessage({ messages: messagesForApi, contextCareer, quizContext })
     },
     onMutate: ({ userMessage }) => {
       addMessage({ role: 'user', content: userMessage, timestamp: Date.now() })
@@ -23,9 +23,9 @@ export function useChat() {
     onSettled: () => setChatLoading(false),
   })
 
-  const sendMessage = (text) => {
+  const sendMessage = (text, quizContext = null) => {
     if (!text.trim() || mutation.isPending) return
-    mutation.mutate({ userMessage: text.trim() })
+    mutation.mutate({ userMessage: text.trim(), quizContext })
   }
 
   return { sendMessage, isPending: mutation.isPending }

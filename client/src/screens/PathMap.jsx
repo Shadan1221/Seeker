@@ -1,12 +1,15 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useCareers } from '../hooks/useCareers.js'
 import useAppStore from '../store/useAppStore.js'
 import { getMatchPercentage } from '../utils/scoring.js'
+import { compareCareers } from '../api/careersApi'
 import SeekerNav from '../components/layout/SeekerNav.jsx'
 import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import CareerDrawer from '../components/career/CareerDrawer.jsx'
+import CompareOverlay from '../components/career/CompareOverlay.jsx'
 import Icon from '../components/ui/Icon.jsx'
 
 // SPACIOUS TREE: Clusters spread wide to prevent inter-cluster overlap
@@ -63,10 +66,18 @@ export default function PathMap() {
   const careers = data?.careers || []
   
   const quizAnswers = useAppStore(s => s.quizAnswers)
+  const customAnswers = useAppStore(s => s.customAnswers)
   const quizCompleted = useAppStore(s => s.quizCompleted)
   const selectedCareer = useAppStore(s => s.selectedCareer)
   const setSelectedCareer = useAppStore(s => s.setSelectedCareer)
   
+  const { 
+    enterCompareMode, exitCompareMode, 
+    toggleCompareSelection, compareSelections, 
+    compareMode, compareResult, setCompareResult, setCompareLoading, compareLoading,
+    isMinimalData
+  } = useAppStore()
+
   const [hoveredCluster, setHoveredCluster] = useState(null)
   const [hoveredCareer, setHoveredCareer] = useState(null)
   const [filterMode, setFilterMode] = useState(quizCompleted ? 'for-you' : 'all')
@@ -85,6 +96,20 @@ export default function PathMap() {
   const onPan = (e) => { if (!isDragging) return; setPan({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); }
   const endPan = () => setIsDragging(false)
   const resetView = () => { setZoom(0.9); setPan({ x: 0, y: 0 }); }
+
+  const handleRunComparison = async () => {
+    if (compareSelections.length !== 2) return
+    setCompareLoading(true)
+    try {
+      const result = await compareCareers(compareSelections[0], compareSelections[1])
+      setCompareResult(result)
+    } catch (err) {
+      console.error(err)
+      toast.error('Could not generate comparison. Please try again.')
+    } finally {
+      setCompareLoading(false)
+    }
+  }
 
   // Smoothly navigate to a specific node
   const navigateToNode = useCallback((targetX, targetY) => {
@@ -109,12 +134,12 @@ export default function PathMap() {
       if (!careers || careers.length === 0) return []
       return careers.map(c => ({
         ...c,
-        matchScore: quizCompleted ? getMatchPercentage(c, quizAnswers) : 0
+        matchScore: quizCompleted ? getMatchPercentage(c, quizAnswers, customAnswers) : 0
       })).sort((a, b) => b.matchScore - a.matchScore)
     } catch (err) { return careers || [] }
-  }, [careers, quizAnswers, quizCompleted])
+  }, [careers, quizAnswers, customAnswers, quizCompleted])
 
-  const topRecommendations = useMemo(() => scoredCareers.slice(0, 5).map(c => c.id), [scoredCareers])
+  const topRecommendations = useMemo(() => scoredCareers.slice(0, 10).map(c => c.id), [scoredCareers])
 
   const filteredCareersList = useMemo(() => {
      if (!search) return scoredCareers
@@ -134,8 +159,13 @@ export default function PathMap() {
        const angle = (startAngle + i * angleStep) * (Math.PI / 180)
        
        // 3 radius tiers with organic jitter for natural branch lengths
-       const radii = [140, 230, 320]
-       const baseRadius = radii[i % radii.length]
+       let radii = [140, 230, 320]
+       if (clusterId === "Technology & Data") radii = [180, 260, 340] // Slightly longer for tech
+       
+       let baseRadius = radii[i % radii.length]
+       // Force Game Developer to be in the outer tier if it's too short
+       if (c.id === "game-developer") baseRadius = Math.max(baseRadius, 320)
+
        const jitter = (seededRandom(c.id?.length + i * 7 + 3) - 0.5) * 40
        const radius = baseRadius + jitter
        
@@ -152,12 +182,17 @@ export default function PathMap() {
 
   // Pre-compute all career nodes with collision resolution
   const allCareerNodes = useMemo(() => {
-    const allNodes = []
-    for (const cluster of CLUSTER_NODES) {
-      const nodes = getCareerNodes(cluster.id, cluster.x, cluster.y, cluster.branchAngle)
-      allNodes.push(...nodes)
+    try {
+      const allNodes = []
+      for (const cluster of CLUSTER_NODES) {
+        const nodes = getCareerNodes(cluster.id, cluster.x, cluster.y, cluster.branchAngle)
+        allNodes.push(...nodes)
+      }
+      return resolveOverlaps(allNodes, 130)
+    } catch (err) {
+      console.error('Error computing career nodes:', err)
+      return []
     }
-    return resolveOverlaps(allNodes, 130)
   }, [filteredCareersList])
 
   const youX = 1150
@@ -166,21 +201,32 @@ export default function PathMap() {
   return (
     <div 
       className="fixed inset-0 bg-paper overflow-hidden font-sans select-none z-0"
-      onWheel={onWheel}
-      onMouseDown={startPan}
-      onMouseMove={onPan}
-      onMouseUp={endPan}
-      onMouseLeave={endPan}
     >
       <FloatingPaths position={1} />
       <SeekerNav />
 
       {/* Controls */}
       <div className="absolute top-24 left-8 z-30 flex flex-col gap-4">
+         {isMinimalData && (
+           <div className="text-sm text-ink-60 bg-white/80 backdrop-blur-md border border-ink-10 rounded-xl px-4 py-3 mb-2 max-w-sm shadow-sm">
+             You answered fewer questions than usual, so we've shown you a broad map.
+             Try the quiz again to see a more personalised view.
+           </div>
+         )}
          <div className="flex bg-surface/80 backdrop-blur-md p-1 rounded-full w-fit border border-ink-10 shadow-sm">
             <button onClick={() => setFilterMode('for-you')} disabled={!quizCompleted} className={`px-5 py-2 text-sm font-bold rounded-full transition-all ${filterMode === 'for-you' ? 'bg-ink text-paper shadow-lg' : 'text-ink-60 hover:text-ink disabled:opacity-30'}`}>For You</button>
             <button onClick={() => setFilterMode('all')} className={`px-5 py-2 text-sm font-bold rounded-full transition-all ${filterMode === 'all' ? 'bg-ink text-paper shadow-lg' : 'text-ink-60 hover:text-ink'}`}>All Paths</button>
          </div>
+
+         <button
+            onClick={enterCompareMode}
+            className="flex items-center gap-2 text-sm font-medium text-ink-60
+                       border border-ink-10 bg-paper/80 backdrop-blur-md px-4 py-2.5 rounded-xl
+                       hover:border-ink-30 hover:text-ink transition-all shadow-sm w-fit"
+          >
+            <Icon name="compare_arrows" size={16} />
+            Compare Paths
+          </button>
       </div>
 
       <div className="absolute bottom-10 left-8 z-30 flex flex-col gap-2">
@@ -189,7 +235,15 @@ export default function PathMap() {
          <button onClick={resetView} className="w-12 h-12 bg-surface text-ink rounded-full flex items-center justify-center shadow-lg border border-ink-10"><Icon name="center_focus_strong" size={20} /></button>
       </div>
 
-      <div className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing" style={{ pointerEvents: selectedCareer ? 'none' : 'auto' }}>
+      <div 
+        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing" 
+        style={{ pointerEvents: (selectedCareer || compareResult) ? 'none' : 'auto' }}
+        onWheel={onWheel}
+        onMouseDown={startPan}
+        onMouseMove={onPan}
+        onMouseUp={endPan}
+        onMouseLeave={endPan}
+      >
         <motion.svg ref={svgRef} className="w-full h-full" style={{ overflow: 'visible' }} viewBox="-100 -100 2500 1800" preserveAspectRatio="xMidYMid meet" animate={{ x: pan.x, y: pan.y, scale: zoom }} transition={{ type: 'spring', damping: 25, stiffness: 120 }}>
           <defs>
             <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
@@ -215,16 +269,22 @@ export default function PathMap() {
           {/* 2. Domain Labels — Large */}
           {CLUSTER_NODES.map((node) => {
             const isActive = hoveredCluster === node.id || selectedCareer?.cluster === node.id
+            const labelAngle = (node.branchAngle + 180) * (Math.PI / 180)
+            const lx = Math.cos(labelAngle) * 65
+            const ly = Math.sin(labelAngle) * 65
+            const cosA = Math.cos(labelAngle)
+            const textAnchor = Math.abs(cosA) < 0.2 ? "middle" : (cosA > 0 ? "start" : "end")
+
             return (
               <g key={`domain-${node.id}`} transform={`translate(${node.x}, ${node.y})`}>
                 <circle r={12} fill={isActive ? node.color : "#0D0D0D"} />
                 <text 
-                  y={-35} textAnchor="middle" 
+                  x={lx} y={ly} textAnchor={textAnchor}
                   className="font-serif font-black tracking-tight" 
                   style={{ fill: isActive ? node.color : "#0D0D0D", fontSize: '28px' }}
                 >
-                  {node.label.split('\n').map((line, idx) => (
-                    <tspan x={0} dy={idx === 0 ? 0 : 30} key={idx}>{line}</tspan>
+                  {node.label.split('\n').map((line, idx, lines) => (
+                    <tspan x={lx} dy={idx === 0 ? (lines.length === 1 ? "0.3em" : "-0.2em") : "1.1em"} key={idx}>{line}</tspan>
                   ))}
                 </text>
               </g>
@@ -239,52 +299,69 @@ export default function PathMap() {
                  {cNodes.map(cNode => {
                     const isSelected = selectedCareer?.id === cNode.id
                     const isHovered = hoveredCareer === cNode.id
+                    const isSelectedForCompare = compareSelections.includes(cNode.id)
                     const isVisible = filterMode === 'all' || isSelected || (filterMode === 'for-you' && topRecommendations.includes(cNode.id))
                     
                     if (!isVisible) return null
 
                     const showDetails = isSelected || isHovered
-                    const radius = isSelected || isHovered ? 60 : 50 
+                    const radius = isSelected || isHovered || isSelectedForCompare ? 60 : 50 
                     const circumference = 2 * Math.PI * radius
                     const matchPct = cNode.matchScore || 0
                     const progressOffset = circumference - (circumference * matchPct / 100)
-                    const showCurvedText = zoom > 1.2 || isSelected || isHovered
+                    const showCurvedText = zoom > 1.2 || isSelected || isHovered || isSelectedForCompare
 
                     // Text path for curved career name
                     const textPathRadius = radius + 8
                     const textPathId = `text-path-${cNode.id}`
 
+                    const handleNodeClick = () => {
+                      if (compareMode) {
+                        toggleCompareSelection(cNode.id)
+                        return
+                      }
+                      setSelectedCareer(cNode)
+                    }
+
                     return (
                       <motion.g
                         key={`career-leaf-${cNode.id}`}
                         initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: isSelected ? 1.15 : 1, opacity: 1 }}
+                        animate={{ 
+                          scale: isSelected || isSelectedForCompare ? 1.15 : 1, 
+                          opacity: compareMode && !isSelectedForCompare ? 0.4 : 1 
+                        }}
                         exit={{ y: 500, opacity: 0, transition: { duration: 0.8 } }}
                         transition={{ type: 'spring', stiffness: 100, damping: 15 }}
                         onMouseEnter={() => setHoveredCareer(cNode.id)}
                         onMouseLeave={() => setHoveredCareer(null)}
-                        onClick={() => setSelectedCareer(cNode)}
+                        onClick={handleNodeClick}
                         className="cursor-pointer"
                       >
                         <motion.line
                           x1={node.x} y1={node.y} x2={cNode.cx} y2={cNode.cy}
-                          stroke={isSelected || isHovered ? node.color : 'rgba(13,13,13,0.1)'}
-                          strokeWidth={isSelected ? 3 : 1}
+                          stroke={isSelected || isHovered || isSelectedForCompare ? node.color : 'rgba(13,13,13,0.1)'}
+                          strokeWidth={isSelected || isSelectedForCompare ? 3 : 1}
                         />
 
-                        {(isSelected || isHovered) && (
+                        {(isSelected || isHovered || isSelectedForCompare) && (
                           <circle cx={cNode.cx} cy={cNode.cy} r={radius + 18} fill={cNode.accent} opacity={0.15} filter="url(#bloom)" />
                         )}
                         
                         {/* Base circle */}
-                        <circle cx={cNode.cx} cy={cNode.cy} r={radius} fill={isSelected || isHovered ? cNode.accent : "#F8F6F1"} stroke="rgba(13,13,13,0.08)" strokeWidth={3} />
+                        <circle 
+                          cx={cNode.cx} cy={cNode.cy} r={radius} 
+                          fill={isSelected || isHovered || isSelectedForCompare ? cNode.accent : "#F8F6F1"} 
+                          stroke={isSelectedForCompare ? "#E8572A" : "rgba(13,13,13,0.08)"} 
+                          strokeWidth={isSelectedForCompare ? 4 : 3} 
+                        />
                         
                         {/* Progress stroke showing match % */}
                         {quizCompleted && (
                           <circle 
                             cx={cNode.cx} cy={cNode.cy} r={radius} 
                             fill="none" 
-                            stroke={isSelected || isHovered ? '#F8F6F1' : cNode.accent} 
+                            stroke={isSelected || isHovered || isSelectedForCompare ? '#F8F6F1' : cNode.accent} 
                             strokeWidth={3.5} 
                             strokeLinecap="round"
                             strokeDasharray={circumference} 
@@ -294,7 +371,7 @@ export default function PathMap() {
                         )}
                         
                         <foreignObject x={cNode.cx - 18} y={cNode.cy - 16} width={36} height={32}>
-                           <div className={`flex items-center justify-center w-full h-full ${isSelected || isHovered ? 'text-paper' : 'text-ink'}`}><Icon name={cNode.icon} size={30} /></div>
+                           <div className={`flex items-center justify-center w-full h-full ${isSelected || isHovered || isSelectedForCompare ? 'text-paper' : 'text-ink'}`}><Icon name={cNode.icon} size={30} /></div>
                         </foreignObject>
 
                         {/* Match percentage inside circle */}
@@ -305,7 +382,7 @@ export default function PathMap() {
                             textAnchor="middle" 
                             dominantBaseline="middle"
                             className="font-sans font-bold pointer-events-none" 
-                            style={{ fill: isSelected || isHovered ? '#F8F6F1' : "#0D0D0D", opacity: 0.8, fontSize: '11px' }}
+                            style={{ fill: isSelected || isHovered || isSelectedForCompare ? '#F8F6F1' : "#0D0D0D", opacity: 0.8, fontSize: '11px' }}
                           >
                             {cNode.matchScore}%
                           </text>
@@ -317,7 +394,7 @@ export default function PathMap() {
                             <defs>
                               <path id={textPathId} d={`M ${cNode.cx - textPathRadius} ${cNode.cy} A ${textPathRadius} ${textPathRadius} 0 1 1 ${cNode.cx + textPathRadius} ${cNode.cy}`} fill="none" />
                             </defs>
-                            <text className="pointer-events-none" style={{ fill: isSelected || isHovered ? cNode.accent : "#0D0D0D", fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                            <text className="pointer-events-none" style={{ fill: isSelected || isHovered || isSelectedForCompare ? cNode.accent : "#0D0D0D", fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                               <textPath href={`#${textPathId}`} startOffset="50%" textAnchor="middle">
                                 {cNode.title}
                               </textPath>
@@ -389,7 +466,79 @@ export default function PathMap() {
         </div>
       </div>
 
-      <CareerDrawer career={selectedCareer} />
+      <AnimatePresence>
+        {selectedCareer && <CareerDrawer career={selectedCareer} />}
+      </AnimatePresence>
+      <CompareOverlay />
+
+      {/* Compare Mode Bar */}
+      <AnimatePresence>
+        {compareMode && (
+          <motion.div
+            initial={{ y: 100, x: '-50%', opacity: 0 }}
+            animate={{ y: 0, x: '-50%', opacity: 1 }}
+            exit={{ y: 100, x: '-50%', opacity: 0 }}
+            className="fixed bottom-8 left-1/2 z-40 flex items-center gap-6
+                       bg-ink text-paper px-8 py-4 rounded-2xl shadow-2xl min-w-[400px]"
+          >
+            {/* Selection slots */}
+            <div className="flex items-center gap-4">
+              {[0, 1].map(i => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold
+                    ${compareSelections[i]
+                      ? 'border-accent bg-accent text-white'
+                      : 'border-paper/20 text-paper/30'
+                    }`}
+                  >
+                    {compareSelections[i]
+                      ? allCareerNodes.find(n => n.id === compareSelections[i])?.title?.slice(0, 2).toUpperCase()
+                      : (i + 1)
+                    }
+                  </div>
+                  {i === 0 && (
+                    <span className="text-paper/30 text-xs font-bold uppercase tracking-widest">vs</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Instruction text */}
+            <div className="flex-1 border-l border-paper/10 pl-6">
+              <p className="text-[10px] text-paper/40 uppercase tracking-widest font-bold mb-0.5">
+                {compareSelections.length === 2 ? 'Ready' : 'Selection'}
+              </p>
+              <p className="text-sm text-paper/80 font-medium">
+                {compareSelections.length === 0 && 'Select two careers to compare'}
+                {compareSelections.length === 1 && 'Select a second career'}
+                {compareSelections.length === 2 && 'Paths selected'}
+              </p>
+            </div>
+
+            {/* Compare button — only when 2 selected */}
+            <div className="flex items-center gap-3">
+              {compareSelections.length === 2 && (
+                <button
+                  onClick={handleRunComparison}
+                  disabled={compareLoading}
+                  className="bg-accent text-white text-sm font-bold px-6 py-2.5 rounded-xl
+                             hover:bg-[#D44E25] transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                >
+                  {compareLoading ? 'Comparing...' : 'Compare →'}
+                </button>
+              )}
+
+              {/* Cancel */}
+              <button
+                onClick={exitCompareMode}
+                className="text-paper/50 hover:text-paper text-sm font-medium px-2 py-1 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

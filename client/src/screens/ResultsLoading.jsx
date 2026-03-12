@@ -2,11 +2,15 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import useAppStore from '../store/useAppStore.js'
+import { useScoreQuiz } from '../hooks/useQuiz.js'
 import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 
 export default function ResultsLoading() {
   const navigate = useNavigate()
   const quizCompleted = useAppStore(s => s.quizCompleted)
+  const quizAnswers = useAppStore(s => s.quizAnswers)
+  const customAnswers = useAppStore(s => s.customAnswers)
+  const { mutate: scoreQuiz } = useScoreQuiz()
 
   useEffect(() => {
     // If user somehow gets here without finishing, send them back
@@ -19,12 +23,15 @@ export default function ResultsLoading() {
       return () => clearTimeout(timer)
     }
 
+    // Trigger backend scoring
+    scoreQuiz({ answers: quizAnswers, customAnswers })
+
     const timer = setTimeout(() => {
       navigate('/paths')
     }, 3000)
     
     return () => clearTimeout(timer)
-  }, [navigate, quizCompleted])
+  }, [navigate, quizCompleted, quizAnswers, customAnswers, scoreQuiz])
 
   const pathVariants = {
     hidden: { pathLength: 0, opacity: 0 },

@@ -35,7 +35,7 @@ const router = createBrowserRouter([
 ])
 
 export default function App() {
-  const compareIds = useAppStore(s => s.compareIds)
+  const compareIds = useAppStore(s => s.compareIds) || []
   const setCompareIds = useAppStore(s => s.setCompareIds)
   const { data } = useCareers()
   const careers = data?.careers || []
@@ -49,7 +49,7 @@ export default function App() {
       {compareIds.length === 2 && (
         <CareerComparison 
           careers={compareCareers} 
-          onClose={() => setCompareIds([])} 
+          onClose={() => setCompareIds && setCompareIds([])} 
         />
       )}
       <div className='font-sans bg-paper min-h-screen text-ink overflow-x-hidden selection:bg-accent-20'>

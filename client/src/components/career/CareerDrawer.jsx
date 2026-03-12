@@ -1,10 +1,159 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useDragControls } from 'framer-motion'
 import Icon from '../ui/Icon.jsx'
 import useAppStore from '../../store/useAppStore.js'
 import { useNavigate } from 'react-router-dom'
-import React from 'react'
+import { QUIZ } from '../../data/quiz.js'
+import { useChat } from '../../hooks/useChat.js'
+import React, { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
+const buildQuizContext = (career, store) => {
+  const { quizCompleted, quizAnswers, customAnswers, skippedQuestions, careerScores } = store
+  if (!quizCompleted && Object.keys(quizAnswers).length === 0) return null
+
+  const answeredCount = Object.keys(quizAnswers).length + Object.keys(customAnswers).length
+  const skippedCount = skippedQuestions.length
+  const totalQuestions = 12
+
+  const tagFreq = {}
+  Object.entries(quizAnswers).forEach(([qId, optionLabel]) => {
+    const question = QUIZ.find(q => q.id === parseInt(qId))
+    if (!question) return
+    const option = question.options.find(o => o.label === optionLabel)
+    if (!option) return
+    option.tags.forEach(tag => {
+      tagFreq[tag] = (tagFreq[tag] || 0) + 1
+    })
+  })
+  Object.values(customAnswers).forEach(ca => {
+    if (!ca) return
+    (ca.tags || []).forEach(tag => {
+      tagFreq[tag] = (tagFreq[tag] || 0) + 1
+    })
+  })
+
+  const topSignals = Object.entries(tagFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([tag]) => tag)
+
+  const careerScore = careerScores?.find(s => s.id === career.id)?.percentage
+  const matchDescription = careerScore
+    ? `${careerScore}% match based on their answers`
+    : 'not yet scored against their answers'
+
+  const customAnswerSummaries = Object.entries(customAnswers)
+    .filter(([_, ca]) => ca !== null)
+    .map(([qId, ca]) => {
+      const question = QUIZ.find(q => q.id === parseInt(qId))
+      return {
+        question: question?.question || `Question ${qId}`,
+        text: ca.text
+      }
+    })
+
+  return {
+    completed: quizCompleted,
+    answeredCount,
+    skippedCount,
+    totalQuestions,
+    topSignals,
+    matchDescription,
+    customAnswers: customAnswerSummaries
+  }
+}
+
+function DrawerChat({ career }) {
+  const [text, setText] = useState('')
+  const { sendMessage } = useChat()
+  const messagesEndRef = useRef(null)
+  const store = useAppStore()
+  const chatMessages = useAppStore(s => s.chatMessages)
+  const chatLoading = useAppStore(s => s.chatLoading)
+  const clearChat = useAppStore(s => s.clearChat)
+  const setContextCareer = useAppStore(s => s.setContextCareer)
+
+  // Refresh chat and context when career node changes
+  useEffect(() => {
+    clearChat()
+    if (career) {
+      setContextCareer(career)
+    }
+  }, [career?.id, clearChat, setContextCareer])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [chatMessages, chatLoading])
+
+  const onSubmit = (e) => {
+    e.preventDefault()
+    if (!text.trim() || chatLoading) return
+    const quizContext = buildQuizContext(career, store)
+    sendMessage(text, quizContext)
+    setText('')
+  }
+
+  return (
+    <div className="flex flex-col h-[500px] bg-surface/30 rounded-[32px] border border-ink-5 overflow-hidden">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        {chatMessages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+            <Icon name="chat_bubble" size={40} className="mb-4" />
+            <p className="text-sm font-bold uppercase tracking-widest">Start a conversation</p>
+            <p className="text-xs max-w-[200px] mt-2">Ask about entry requirements, daily life, or salary in India.</p>
+          </div>
+        ) : (
+          chatMessages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                msg.role === 'user' ? 'bg-ink text-paper' : 'bg-white border border-ink-10 text-ink'
+              }`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+              </div>
+            </div>
+          ))
+        )}
+        {chatLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-ink-10 px-4 py-3 rounded-2xl">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-ink-20 rounded-full animate-bounce" />
+                <div className="w-1.5 h-1.5 bg-ink-20 rounded-full animate-bounce [animation-delay:0.2s]" />
+                <div className="w-1.5 h-1.5 bg-ink-20 rounded-full animate-bounce [animation-delay:0.4s]" />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <form onSubmit={onSubmit} className="p-4 bg-white border-t border-ink-10 flex gap-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`Ask about ${career.title}...`}
+          className="flex-1 bg-surface border border-ink-10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-accent transition-colors"
+        />
+        <button
+          disabled={!text.trim() || chatLoading}
+          className="w-10 h-10 bg-ink text-paper rounded-xl flex items-center justify-center hover:bg-accent disabled:opacity-30 disabled:bg-ink-30 transition-colors"
+        >
+          <Icon name="arrow_upward" size={20} />
+        </button>
+      </form>
+    </div>
+  )
+}
 
 export default function CareerDrawer({ career }) {
+  const dragControls = useDragControls()
   const navigate = useNavigate()
   const clearSelectedCareer = useAppStore(s => s.clearSelectedCareer)
   const toggleBookmark = useAppStore(s => s.toggleBookmark)
@@ -20,12 +169,21 @@ export default function CareerDrawer({ career }) {
 
   return (
     <motion.div
+      initial={{ y: '100%' }}
+      animate={{ y: 0 }}
+      exit={{ y: '100%' }}
       drag="y"
-      dragConstraints={{ top: 0, bottom: 800 }}
-      onDragEnd={(e, info) => { if (info.offset.y > 100) clearSelectedCareer() }}
-      className="fixed bottom-0 left-0 right-0 h-[80vh] bg-paper z-40 border-t border-ink-10 rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden"
-      animate={{ y: career ? 0 : '100%' }}
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={0.6}
+      onDragEnd={(e, info) => {
+        if (info.offset.y > 150 || info.velocity.y > 500) {
+          clearSelectedCareer()
+        }
+      }}
       transition={{ type: 'spring', stiffness: 300, damping: 35 }}
+      className="fixed bottom-0 left-0 right-0 h-[85vh] bg-paper z-[100] border-t border-ink-10 rounded-t-[40px] shadow-2xl flex flex-col overflow-hidden pointer-events-auto"
     >
       {/* Visual Header Background */}
       <div 
@@ -34,7 +192,10 @@ export default function CareerDrawer({ career }) {
       />
 
       {/* Drag handle */}
-      <div className="w-full flex justify-center py-5 cursor-grab active:cursor-grabbing relative z-10">
+      <div 
+        onPointerDown={(e) => dragControls.start(e)}
+        className="w-full flex justify-center py-5 cursor-grab active:cursor-grabbing relative z-20"
+      >
         <div className="w-16 h-1.5 rounded-full bg-ink-10 hover:bg-ink-20 transition-colors" />
       </div>
 
@@ -120,26 +281,7 @@ export default function CareerDrawer({ career }) {
                     {activeTab === 'In India' && <TabIndia career={career} />}
                     {activeTab === 'Hurdles' && <TabHurdles career={career} />}
                     {activeTab === 'Subjects' && <TabSubjects career={career} />}
-                    {activeTab === 'Chat' && (
-                       <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-surface/30 rounded-[32px] border border-ink-5">
-                          <div className="w-20 h-20 rounded-full bg-accent/5 flex items-center justify-center mb-8">
-                             <Icon name="chat_bubble" size={40} className="text-accent" />
-                          </div>
-                          <h3 className="font-serif text-3xl text-ink mb-4">Personalized Roadmapping</h3>
-                          <p className="text-ink-60 mb-10 max-w-sm text-balance leading-relaxed">
-                            Have specific questions about becoming a {career.title}? Seeker's AI can map out your exact path based on your background.
-                          </p>
-                          <button
-                            onClick={() => {
-                               useAppStore.getState().setContextCareer(career)
-                               navigate('/chat')
-                            }}
-                            className="bg-accent text-white px-8 py-4 rounded-xl font-bold tracking-widest uppercase shadow-xl shadow-accent/20 flex items-center gap-3"
-                          >
-                            Talk to Seeker <Icon name="arrow_forward" size={18} />
-                          </button>
-                       </div>
-                    )}
+                    {activeTab === 'Chat' && <DrawerChat career={career} />}
                  </motion.div>
               </AnimatePresence>
            </div>
@@ -158,6 +300,20 @@ export default function CareerDrawer({ career }) {
          </button>
          
          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                const { enterCompareMode, toggleCompareSelection } = useAppStore.getState()
+                enterCompareMode()
+                toggleCompareSelection(career.id)
+                clearSelectedCareer()
+              }}
+              className="flex items-center gap-2 text-sm text-ink-60 hover:text-ink border border-ink-10
+                         px-4 py-2.5 rounded-xl hover:border-ink-30 transition-all font-bold tracking-widest uppercase"
+            >
+              <Icon name="compare_arrows" size={16} />
+              Compare
+            </button>
+
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

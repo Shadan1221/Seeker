@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import useAppStore from '../store/useAppStore.js'
@@ -17,6 +18,7 @@ const suggestionChips = [
 
 export default function Chat() {
   const [text, setText] = useState('')
+  const [searchParams] = useSearchParams()
   const { sendMessage } = useChat()
   const messagesEndRef = useRef(null)
 
@@ -32,6 +34,14 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [chatMessages, chatLoading])
+
+  useEffect(() => {
+    const compareParam = searchParams.get('compare')
+    if (compareParam && chatMessages.length === 0) {
+      const [idA, idB] = compareParam.split(',')
+      sendMessage(`I just compared ${idA} and ${idB} on Seeker. Can you help me think through which path suits me better?`)
+    }
+  }, []) // Initial load only
 
   const onSubmit = (e) => {
     e.preventDefault()
