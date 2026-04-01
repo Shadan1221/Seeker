@@ -68,7 +68,7 @@ export default function SeekerNav() {
 
           {/* Right nav items */}
           <div className="flex items-center gap-8">
-            {(quizCompleted || user) && (
+            {quizCompleted && (
               <button
                 onClick={() => navigate('/paths')}
                 className={`text-sm font-medium tracking-wide hover-underline ${isActive('/paths') ? 'text-accent' : 'text-ink-60'}`}

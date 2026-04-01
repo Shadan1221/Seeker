@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect } from 'react'
 import useAppStore from '../../store/useAppStore'
 
-export function ProtectedRoute({ children }) {
-  const { user, profile, authLoading, setAuthLoading } = useAppStore()
+export function ProtectedRoute({ children, requireQuiz = false }) {
+  const { user, profile, authLoading, setAuthLoading, quizCompleted } = useAppStore()
   const location = useLocation()
 
   useEffect(() => {
@@ -48,6 +48,10 @@ export function ProtectedRoute({ children }) {
 
   if (user && !profile) {
     return <Navigate to="/?mode=signup&step=2" replace />
+  }
+
+  if (requireQuiz && !quizCompleted) {
+    return <Navigate to="/quiz" replace />
   }
 
   return children

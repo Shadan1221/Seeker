@@ -65,7 +65,7 @@ const router = createBrowserRouter([
   { 
     path: '/paths', 
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute requireQuiz>
         <PathMap />
       </ProtectedRoute>
     ) 
