@@ -1,9 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { supabase } from '../lib/supabase'
 
 const useAppStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
+      // Auth State
+      user: null,
+      profile: null,
+      authLoading: false,
+
       quizAnswers: {},
       skippedQuestions: [],   // array of question IDs that were skipped
       customAnswers: {},      // { [questionId]: { text, tags, interpretation } }
@@ -35,6 +41,39 @@ const useAppStore = create(
       compareResult: null,          // the generated comparison object
       compareLoading: false,
 
+      // Auth Actions
+      setUser: (user) => set({ user }),
+      setProfile: (profile) => set({ profile }),
+      setAuthLoading: (loading) => set({ authLoading: loading }),
+      clearAuth: () => set({ user: null, profile: null }),
+      fullReset: () => {
+        const { authLoading } = get()
+        set({
+          quizAnswers: {},
+          skippedQuestions: [],
+          customAnswers: {},
+          currentQuestion: 1,
+          quizCompleted: false,
+          recommendedCareers: [],
+          careerScores: [],
+          isMinimalData: false,
+          visitedCareers: [],
+          bookmarkedCareers: [],
+          chatMessages: [],
+          chatLoading: false,
+          contextCareer: null,
+          selectedStream: null,
+          compareIds: [],
+          compareMode: false,
+          compareSelections: [],
+          compareResult: null,
+          compareLoading: false,
+          user: null,
+          profile: null,
+          authLoading: authLoading // Preserve authLoading state
+        })
+      },
+
       // Compare Actions
       enterCompareMode: () => set({ compareMode: true, compareSelections: [], compareResult: null }),
       exitCompareMode: () => set({ compareMode: false, compareSelections: [], compareResult: null }),
@@ -52,13 +91,29 @@ const useAppStore = create(
       setCompareResult: (result) => set({ compareResult: result }),
       setCompareLoading: (loading) => set({ compareLoading: loading }),
 
-      setAnswer: (questionId, optionLabel) => set((s) => ({ quizAnswers: { ...s.quizAnswers, [String(questionId)]: optionLabel } })),
+      setAnswer: (questionId, optionLabel) => set((s) => {
+        const key = String(questionId)
+        const next = { ...s.quizAnswers }
+        if (optionLabel === null || optionLabel === undefined) {
+          delete next[key]
+        } else {
+          next[key] = optionLabel
+        }
+        return { quizAnswers: next }
+      }),
       skipQuestion: (questionId) => set((state) => ({
         skippedQuestions: [...state.skippedQuestions, questionId]
       })),
-      recordCustomAnswer: (questionId, data) => set((state) => ({
-        customAnswers: { ...state.customAnswers, [questionId]: data }
-      })),
+      recordCustomAnswer: (questionId, data) => set((state) => {
+        const key = String(questionId)
+        const next = { ...state.customAnswers }
+        if (data === null || data === undefined) {
+          delete next[key]
+        } else {
+          next[key] = data
+        }
+        return { customAnswers: next }
+      }),
       setCurrentQuestion: (n) => set({ currentQuestion: n }),
       resetQuiz: () => set({ quizAnswers: {}, currentQuestion: 1, quizCompleted: false }),
       markQuizCompleted: () => set({ quizCompleted: true }),
@@ -75,7 +130,33 @@ const useAppStore = create(
       clearSelectedCareer: () => set({ selectedCareer: null }),
       visitCareer: (id) => set((s) => ({ visitedCareers: [...new Set([...s.visitedCareers, id])] })),
       completeQuiz: () => set({ quizCompleted: true }),
-      toggleBookmark: (id) => set((s) => ({ bookmarkedCareers: s.bookmarkedCareers.includes(id) ? s.bookmarkedCareers.filter((b) => b !== id) : [...s.bookmarkedCareers, id] })),
+      
+      setBookmarkedCareers: (bookmarkedCareers) => set({ bookmarkedCareers }),
+      toggleBookmark: async (id) => {
+        const { user, bookmarkedCareers } = get()
+        const isBookmarked = bookmarkedCareers.includes(id)
+        const previous = bookmarkedCareers
+        
+        // Optimistic update
+        set({ 
+          bookmarkedCareers: isBookmarked 
+            ? bookmarkedCareers.filter((b) => b !== id) 
+            : [...bookmarkedCareers, id] 
+        })
+
+        if (user) {
+          try {
+            if (isBookmarked) {
+              await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('career_id', id)
+            } else {
+              await supabase.from('bookmarks').insert({ user_id: user.id, career_id: id })
+            }
+          } catch (err) {
+            // Keep UI state truthful if remote persistence fails.
+            set({ bookmarkedCareers: previous })
+          }
+        }
+      },
       setBookmarksOpen: (bookmarksOpen) => set({ bookmarksOpen }),
 
       setCompareIds: (compareIds) => set({ compareIds }),
@@ -99,6 +180,8 @@ const useAppStore = create(
         visitedCareers: s.visitedCareers,
         bookmarkedCareers: s.bookmarkedCareers,
         selectedStream: s.selectedStream,
+        user: s.user,
+        profile: s.profile,
       }),
     }
   )

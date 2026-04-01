@@ -70,6 +70,7 @@ export default function PathMap() {
   const quizCompleted = useAppStore(s => s.quizCompleted)
   const selectedCareer = useAppStore(s => s.selectedCareer)
   const setSelectedCareer = useAppStore(s => s.setSelectedCareer)
+  const profile = useAppStore(s => s.profile)
   
   const { 
     enterCompareMode, exitCompareMode, 
@@ -205,8 +206,26 @@ export default function PathMap() {
       <FloatingPaths position={1} />
       <SeekerNav />
 
+      {/* Personalized Greeting */}
+      <AnimatePresence>
+        {profile && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="fixed top-24 left-8 z-30"
+          >
+            <div className="bg-paper/80 backdrop-blur-md border border-ink-10 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-[10px] font-black tracking-widest uppercase text-ink-60">
+                Welcome back, {profile.username}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Controls */}
-      <div className="absolute top-24 left-8 z-30 flex flex-col gap-4">
+      <div className={`absolute left-8 z-30 flex flex-col gap-4 ${profile ? 'top-40' : 'top-24'}`}>
          {isMinimalData && (
            <div className="text-sm text-ink-60 bg-white/80 backdrop-blur-md border border-ink-10 rounded-xl px-4 py-3 mb-2 max-w-sm shadow-sm">
              You answered fewer questions than usual, so we've shown you a broad map.

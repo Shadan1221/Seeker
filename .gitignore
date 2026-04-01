@@ -3,5 +3,11 @@ client/node_modules/
 server/node_modules/
 client/dist/
 .env
+.env*
+!.env.example
+client/.env*
+!client/.env.example
+server/.env*
+!server/.env.example
 server/.env
 npm-debug.log*

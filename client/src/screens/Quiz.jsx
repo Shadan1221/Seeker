@@ -30,7 +30,16 @@ export default function Quiz() {
   // Restore state if returning
   useEffect(() => {
     if (questions.length > 0) {
-      const answeredCount = Object.keys(quizAnswers).length + Object.keys(customAnswers).length + skippedQuestions.length
+      const answeredIds = new Set([
+        ...Object.entries(quizAnswers)
+          .filter(([, value]) => value !== null && value !== undefined)
+          .map(([id]) => String(id)),
+        ...Object.entries(customAnswers)
+          .filter(([, value]) => value !== null && value !== undefined)
+          .map(([id]) => String(id)),
+        ...skippedQuestions.map((id) => String(id)),
+      ])
+      const answeredCount = answeredIds.size
       if (answeredCount > 0 && answeredCount < questions.length) {
         setCurrentIndex(answeredCount)
       }

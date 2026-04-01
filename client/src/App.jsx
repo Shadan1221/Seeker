@@ -1,20 +1,23 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { lazy, Suspense } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import CustomCursor from './components/layout/CustomCursor.jsx'
 import BookmarksPanel from './components/career/BookmarksPanel.jsx'
 import CareerComparison from './components/career/CareerComparison.jsx'
+import { ProtectedRoute } from './components/auth/ProtectedRoute.jsx'
+import { useAuth } from './hooks/useAuth.js'
 import useAppStore from './store/useAppStore.js'
 import { useCareers } from './hooks/useCareers.js'
 
-// Route-based code splitting for improved initial performance
+// Route-based code splitting
 const Splash = lazy(() => import('./screens/Splash'))
 const StreamGuide = lazy(() => import('./screens/StreamGuide'))
 const Quiz = lazy(() => import('./screens/Quiz'))
 const ResultsLoading = lazy(() => import('./screens/ResultsLoading'))
 const PathMap = lazy(() => import('./screens/PathMap'))
 const Chat = lazy(() => import('./screens/Chat'))
+const Auth = lazy(() => import('./screens/Auth'))
 
 function LoadingFallback() {
   return (
@@ -25,18 +28,63 @@ function LoadingFallback() {
 }
 
 const router = createBrowserRouter([
-  { path: '/', element: <Splash /> },
-  { path: '/streams', element: <StreamGuide /> },
-  { path: '/quiz', element: <Quiz /> },
-  { path: '/results', element: <ResultsLoading /> },
-  { path: '/paths', element: <PathMap /> },
-  { path: '/chat', element: <Chat /> },
-  { path: '*', element: <Splash /> },
+  { path: '/', element: <Auth /> },
+  { path: '/auth', element: <Auth /> },
+  {
+    path: '/welcome',
+    element: (
+      <ProtectedRoute>
+        <Splash />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/streams',
+    element: (
+      <ProtectedRoute>
+        <StreamGuide />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/quiz',
+    element: (
+      <ProtectedRoute>
+        <Quiz />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/results',
+    element: (
+      <ProtectedRoute>
+        <ResultsLoading />
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: '/paths', 
+    element: (
+      <ProtectedRoute>
+        <PathMap />
+      </ProtectedRoute>
+    ) 
+  },
+  { 
+    path: '/chat', 
+    element: (
+      <ProtectedRoute>
+        <Chat />
+      </ProtectedRoute>
+    ) 
+  },
+  { path: '*', element: <Navigate to="/" replace /> },
 ])
 
 export default function App() {
   const compareIds = useAppStore(s => s.compareIds) || []
   const setCompareIds = useAppStore(s => s.setCompareIds)
+  useAuth() // Initializes auth listener
   const { data } = useCareers()
   const careers = data?.careers || []
   

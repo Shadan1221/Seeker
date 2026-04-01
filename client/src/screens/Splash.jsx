@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import SeekerNav from '../components/layout/SeekerNav.jsx'
 import Icon from '../components/ui/Icon.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 
 const quotes = [
   { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
@@ -15,6 +16,7 @@ const quotes = [
 
 export default function Splash() {
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const [quoteIndex, setQuoteIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const scrollContainerRef = useRef(null)
@@ -125,6 +127,24 @@ export default function Splash() {
       </div>
 
       <SeekerNav />
+
+      {/* Personalized Greeting */}
+      <AnimatePresence>
+        {profile && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="fixed top-24 left-8 z-30"
+          >
+            <div className="bg-paper/80 backdrop-blur-md border border-ink-10 px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-[10px] font-black tracking-widest uppercase text-ink-60">
+                Welcome back, {profile.username}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center z-10 pt-20 bg-transparent">
