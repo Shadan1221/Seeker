@@ -160,7 +160,14 @@ export default function Quiz() {
                   >
                     <div className="flex items-start gap-6">
                       <span className={`text-[10px] font-black tracking-widest mt-1.5 transition-colors ${selectedId === opt.id ? 'text-accent' : 'text-ink-20'}`}>0{i + 1}</span>
-                      <span className="text-xl md:text-2xl font-medium tracking-tight leading-snug">{opt.label}</span>
+                      <div className="relative z-10 pr-2">
+                         <h3 className={`font-bold mb-0.5 text-sm md:text-base leading-snug transition-colors ${selectedId === opt.id ? 'text-accent' : 'text-ink'}`}>
+                           {opt.title}
+                         </h3>
+                         <p className="text-xs md:text-sm text-ink-60 leading-relaxed line-clamp-2 md:line-clamp-none">
+                           {opt.description}
+                         </p>
+                      </div>
                     </div>
                     {selectedId === opt.id && (
                       <motion.div layoutId="active-bg" className="absolute inset-0 border-2 border-accent pointer-events-none" />
