@@ -47,6 +47,7 @@ const StreamGuide = lazyRetry(() => import('./screens/StreamGuide'))
 const PathMap = lazyRetry(() => import('./screens/PathMap'))
 const Chat = lazyRetry(() => import('./screens/Chat'))
 const Auth = lazyRetry(() => import('./screens/Auth'))
+const Feedback = lazyRetry(() => import('./screens/Feedback'))
 
 function LoadingFallback() {
   return (
@@ -112,6 +113,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     errorElement: <RouteBoundary /> 
+  },
+  {
+    path: '/feedback',
+    element: (
+      <ProtectedRoute>
+        <Feedback />
+      </ProtectedRoute>
+    ),
+    errorElement: <RouteBoundary />
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ])
