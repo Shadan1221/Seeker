@@ -97,7 +97,7 @@ export const QUIZ = [
   },
   {
     id: 7,
-    skippable: false,
+    skippable: true,
     icon: "balance",
     question: "When a decision involves real uncertainty — no guaranteed outcome — what do you do?",
     subtext: "This question is about your genuine default, not what you aspire to.",
@@ -177,8 +177,8 @@ export const QUIZ = [
   },
   {
     id: 12,
-    icon: "explore",
     skippable: false,
+    icon: "explore",
     question: "Which of these sentences describes something you've actually felt, even once?",
     subtext: "The one that has a small recognition in it — not the one you wish were true.",
     dimension: "identity_signal",

@@ -97,7 +97,7 @@ export const QUIZ = [
   },
   {
     id: 7,
-    skippable: false,
+    skippable: true,
     icon: "balance",
     question: "When a decision involves real uncertainty — no guaranteed outcome — what do you do?",
     subtext: "This question is about your genuine default, not what you aspire to.",
@@ -129,15 +129,15 @@ export const QUIZ = [
   },
   {
     id: 9,
-    skippable: false,
     icon: "public",
+    skippable: false,
     question: "What kind of problem would you most want to spend your life working on?",
     subtext: "Scale and domain — not necessarily your exact role in it.",
     dimension: "impact_orientation",
     options: [
       { label: "A", title: "Human health and wellbeing — illness, mental health, longevity", description: "The body and mind as territories to understand and heal.", tags: ["healthcare", "medicine", "counselling", "research", "pharma"] },
       { label: "B", title: "How people learn and develop throughout their lives", description: "Education, capability, growth as lifelong pursuits.", tags: ["education", "social", "counselling", "content", "humanities"] },
-      { label: "C", title: "How systems work — economies, cities, governments, institutions", description: "The complex machinery that organises society.", tags: ["finance", "government", "law", "management", "journalism"] },
+      { label: "C", title: "How systems work — economies, cities, governments, institutions", description: "The complex machinery that organizes society.", tags: ["finance", "government", "law", "management", "journalism"] },
       { label: "D", title: "Technology and what it makes possible", description: "Software, hardware, AI, infrastructure — the levers of the future.", tags: ["tech", "data-science", "engineering", "research"] },
       { label: "E", title: "Culture and expression — what stories we tell, what beauty we make", description: "Art, media, design as ways of understanding the world.", tags: ["film", "arts", "design", "creative", "content", "journalism"] },
       { label: "F", title: "Commerce and value creation — building things that sustain themselves", description: "The dynamics of business, markets, and making ideas viable.", tags: ["entrepreneurship", "management", "finance", "marketing"] },
@@ -145,8 +145,8 @@ export const QUIZ = [
   },
   {
     id: 10,
-    skippable: false,
     icon: "school",
+    skippable: false,
     question: "Honestly — which of these felt most like your territory in school?",
     subtext: "Not your best marks. The subjects you were actually curious about.",
     dimension: "subject_affinity",
