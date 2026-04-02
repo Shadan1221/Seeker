@@ -36,7 +36,7 @@ export default function CareerComparison({ careers, onClose }) {
           </button>
         </div>
 
-        <div className='flex-1 overflow-y-auto p-8 sm:p-12 custom-scrollbar'>
+        <div className='flex-1 overflow-y-auto p-8 sm:p-12 pb-24 custom-scrollbar'>
           <div className='grid md:grid-cols-2 gap-12 relative'>
             {/* VS Divider */}
             <div className="hidden md:flex absolute left-1/2 top-0 bottom-0 w-px bg-ink-5 items-center justify-center -translate-x-1/2">
@@ -83,7 +83,7 @@ export default function CareerComparison({ careers, onClose }) {
           </div>
         </div>
 
-        <div className="p-8 border-t border-ink-10 bg-surface/30 flex justify-center">
+        <div className="sticky bottom-0 p-8 border-t border-ink-10 bg-surface/95 backdrop-blur-sm flex justify-center">
            <button 
              onClick={onClose}
              className="px-10 py-4 bg-ink text-paper rounded-xl font-bold tracking-[0.3em] uppercase hover:bg-accent transition-all shadow-xl shadow-ink/10"
