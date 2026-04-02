@@ -58,12 +58,13 @@ export default function Auth() {
     signUp, 
     saveProfile, 
     user, 
-    profile 
+    profile,
+    loading 
   } = useAuth()
   const quizCompleted = useAppStore(s => s.quizCompleted)
 
   const [activeTab, setActiveTab] = useState('email')
-  const [loading, setLoading] = useState(false)
+  const [formLoading, setFormLoading] = useState(false)
   const [error, setError] = useState('')
   const [welcomeMode, setWelcomeMode] = useState(false)
 
@@ -90,10 +91,11 @@ export default function Auth() {
 
   // Redirect if already authenticated and profile is complete
   useEffect(() => {
-    if (user && profile && !welcomeMode) {
+    // Crucial: Wait until loading is false to ensure quizCompleted is synced from DB
+    if (!loading && user && profile && !welcomeMode) {
       navigate(quizCompleted ? '/paths' : '/quiz')
     }
-  }, [user, profile, navigate, quizCompleted, welcomeMode])
+  }, [user, profile, navigate, quizCompleted, welcomeMode, loading])
 
   // Handle step 2 from URL
   useEffect(() => {

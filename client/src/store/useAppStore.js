@@ -130,6 +130,16 @@ const useAppStore = create(
         quizCompleted: true,
         isMinimalData: false
       }),
+      syncAuthData: (profile, attempt) => set({
+        profile: profile || null,
+        quizAnswers: attempt?.answers || {},
+        customAnswers: attempt?.custom_answers || {},
+        recommendedCareers: attempt?.scores || [],
+        careerScores: attempt?.scores || [],
+        quizCompleted: !!attempt,
+        isMinimalData: false,
+        authLoading: false
+      }),
 
       setGalaxyFilter: (galaxyFilter) => set({ galaxyFilter }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
