@@ -8,6 +8,8 @@ create table public.profiles (
   institution_name text,
   school_class text,      -- only for school students: "Class 5" through "Class 12"
   degree text,            -- only for university students: full degree name
+  persona_summary text,   -- added to store AI generated persona
+  personality_traits jsonb, -- added to store AI generated traits
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

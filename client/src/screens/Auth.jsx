@@ -90,8 +90,11 @@ export default function Auth() {
   // Redirect if already authenticated and profile is complete
   useEffect(() => {
     // Wait until auth bootstrap is complete so quiz/profile state is accurate.
+    // If it's a new login, authLoading will be true while we fetch quiz history.
     if (!authLoading && user && profile && !welcomeMode) {
-      navigate(quizCompleted ? '/paths' : '/quiz')
+      // If we just finished sync, quizCompleted will now reflect the DB state
+      const target = quizCompleted ? '/paths' : '/quiz'
+      navigate(target)
     }
   }, [user, profile, navigate, quizCompleted, welcomeMode, authLoading])
 

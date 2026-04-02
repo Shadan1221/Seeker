@@ -16,7 +16,7 @@ export function useScoreQuiz() {
       setResults(data.recommendedCareers, data.scores || data.recommendedCareers, data.isMinimalData)
       
       // Save quiz results and persona if user is authenticated
-      const { user, quizAnswers, customAnswers, setProfile } = useAppStore.getState()
+      const { user, quizAnswers, customAnswers, skippedQuestions, setProfile } = useAppStore.getState()
       if (user) {
         try {
           // 1. Save the quiz attempt
@@ -24,6 +24,7 @@ export function useScoreQuiz() {
             user_id: user.id,
             answers: quizAnswers,
             custom_answers: customAnswers,
+            skipped_questions: skippedQuestions,
             scores: data.recommendedCareers,
             taken_at: new Date().toISOString()
           })
