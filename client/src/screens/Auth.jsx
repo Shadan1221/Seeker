@@ -23,7 +23,7 @@ const CLASSES = [
 
 const ROLES = [
   { id: 'student', label: 'Student', icon: 'school' },
-  { id: 'teacher', label: 'Teacher', icon: 'person_teach' },
+  { id: 'teacher', label: 'Teacher', icon: 'person' },
   { id: 'career_counsellor', label: 'Career Counsellor', icon: 'support_agent' }
 ]
 
