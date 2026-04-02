@@ -71,7 +71,8 @@ Every career cluster is colour-coded and positioned equally on the path map. A c
 | Layer | Technology |
 |-------|------------|
 | Frontend | React 18, Vite, Tailwind CSS, Framer Motion, Zustand, React Query |
-| Backend | Node.js, Express, OpenAI (via OpenRouter) |
+| Backend (API) | Node.js, Express, OpenAI (via OpenRouter) |
+| Backend (BaaS) | Supabase (Authentication, PostgreSQL Database, RLS) |
 | Validation | Zod |
 | Security | Helmet, CORS, express-rate-limit |
 
@@ -83,21 +84,40 @@ Every career cluster is colour-coded and positioned equally on the path map. A c
 
 - **Node.js** ≥ 18
 - **npm** ≥ 9
+- **Supabase Account** (for database and authentication)
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/Shadan1221/Seeker.git
-cd Seeker
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Shadan1221/Seeker.git
+   cd Seeker
+   ```
 
-# Install all dependencies (root, client, and server)
-npm run install:all
-```
+2. **Install all dependencies:**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Database Setup:**
+   - Create a new project in the [Supabase Dashboard](https://supabase.com/).
+   - Navigate to the **SQL Editor**.
+   - Copy the contents of [`supabase/schema.sql`](file:///d:/Seeker%202/supabase/schema.sql) and run it to initialize the tables (`profiles`, `quiz_attempts`, `bookmarks`, `user_personas`) and Row Level Security (RLS) policies.
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the required API keys (see `.env.example` if available).
+Create a `.env` file in the project root with the following variables:
+
+```env
+# Backend API Keys
+GROQ_API_KEY=your_groq_api_key_here
+PORT=3000
+
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
 
 ### Running Locally
 
@@ -108,32 +128,20 @@ npm run dev
 
 The client runs on `http://localhost:5173` and the server on `http://localhost:3000` by default.
 
-### Production Build
-
-```bash
-# Build the client
-npm run build
-
-# Start the server (serves the built client)
-npm start
-```
-
----
-
-## Project Structure
+### Project Structure
 
 ```
 Seeker/
 ├── client/               # React + Vite frontend
 │   └── src/
-│       ├── api/          # API client & endpoint modules
+│       ├── api/          # API client & endpoint modules (Express + Supabase)
 │       ├── components/   # UI, layout, and career components
 │       ├── data/         # Static career & quiz data
-│       ├── hooks/        # Custom React hooks
+│       ├── hooks/        # Custom React hooks (useAuth, useQuiz, etc.)
 │       ├── screens/      # Page-level screen components
-│       ├── store/        # Zustand global state
-│       └── utils/        # Helpers (scoring, classnames)
-├── server/               # Express backend
+│       ├── store/        # Zustand global state (with persistence)
+│       └── utils/        # Helpers (scoring, dynamic imports)
+├── server/               # Express backend (AI Scoring & Interpretation)
 │   └── src/
 │       ├── config/       # Environment config
 │       ├── controllers/  # Route handlers
@@ -141,6 +149,7 @@ Seeker/
 │       ├── middleware/    # Error handling, logging, validation
 │       ├── routes/       # Express route definitions
 │       └── services/     # AI integration & scoring logic
+├── supabase/             # Database migrations & schema
 └── package.json          # Workspace root (npm workspaces)
 ```
 

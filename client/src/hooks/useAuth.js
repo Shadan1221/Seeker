@@ -3,138 +3,118 @@ import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 
 export function useAuth() {
-  const { 
-    user, 
-    profile, 
-    authLoading, 
-    setUser, 
-    setProfile, 
-    setAuthLoading, 
-    clearAuth, 
-    fullReset,
-    setFromAttempt,
-    syncAuthData
-  } = useAppStore()
+  const user = useAppStore(s => s.user)
+  const profile = useAppStore(s => s.profile)
+  const authLoading = useAppStore(s => s.authLoading)
+  const setUser = useAppStore(s => s.setUser)
+  const setProfile = useAppStore(s => s.setProfile)
+  const setAuthLoading = useAppStore(s => s.setAuthLoading)
+  const fullReset = useAppStore(s => s.fullReset)
+  const syncAuthData = useAppStore(s => s.syncAuthData)
 
   useEffect(() => {
-    // Initial session check
-    const initSession = async () => {
-      setAuthLoading(true)
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          const [profileRes, bookmarksRes, quizRes] = await Promise.all([
-            supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id),
-            supabase.from('quiz_attempts').select('*').eq('user_id', session.user.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
-          ])
+    let mounted = true
 
-          if (bookmarksRes.data) {
-            const remoteBookmarks = bookmarksRes.data.map(b => b.career_id)
-            const localBookmarks = useAppStore.getState().bookmarkedCareers
-            const merged = [...new Set([...remoteBookmarks, ...localBookmarks])]
-            useAppStore.getState().setBookmarkedCareers(merged)
-          }
-
-          // Atomic sync of profile and quiz
-          syncAuthData(profileRes.data, quizRes.data)
-        } else {
+    const fetchAllUserData = async (sessionUser) => {
+      if (!sessionUser) {
+        if (mounted) {
           setUser(null)
           setProfile(null)
           setAuthLoading(false)
         }
+        return
+      }
+
+      try {
+        if (mounted) {
+          setUser(sessionUser)
+          // Only trigger full-screen loading if we don't already have the user 
+          // (prevents mount loops when useAuth is consumed by child components)
+          if (!user || user.id !== sessionUser.id) {
+            setAuthLoading(true)
+          }
+        }
+
+        // Fetch everything in parallel silently if already logged in
+        const [profileRes, bookmarksRes, quizRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', sessionUser.id).single(),
+          supabase.from('bookmarks').select('career_id').eq('user_id', sessionUser.id),
+          supabase.from('quiz_attempts').select('*').eq('user_id', sessionUser.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
+        ])
+
+        if (!mounted) return
+
+        // Sync Bookmarks
+        if (bookmarksRes.data) {
+          const remoteBookmarks = bookmarksRes.data.map(b => b.career_id)
+          useAppStore.getState().setBookmarkedCareers(remoteBookmarks)
+        }
+
+        // Atomic Sync of Profile and Quiz (this also sets authLoading to false)
+        syncAuthData(profileRes.data, quizRes.data)
       } catch (err) {
-        setUser(null)
-        setProfile(null)
-        setAuthLoading(false)
+        console.error('Error fetching user data:', err)
+        if (mounted) {
+          setAuthLoading(false)
+        }
       }
     }
 
-    initSession()
-
-    // Listen for auth state changes
+    // Single source of truth: Listen for auth state changes
+    // This fires INITIAL_SESSION automatically on start
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (session?.user) {
-          setUser(session.user)
-          setAuthLoading(true)
-
-          // Fetch profile, bookmarks, and quiz in parallel
-          const [profileRes, bookmarksRes, quizRes] = await Promise.all([
-            supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id),
-            supabase.from('quiz_attempts').select('*').eq('user_id', session.user.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
-          ])
-
-          if (bookmarksRes.data) {
-            const remoteBookmarks = bookmarksRes.data.map(b => b.career_id)
-            const localBookmarks = useAppStore.getState().bookmarkedCareers
-            const merged = [...new Set([...remoteBookmarks, ...localBookmarks])]
-            useAppStore.getState().setBookmarkedCareers(merged)
-
-            const toSync = localBookmarks.filter(id => !remoteBookmarks.includes(id))
-            if (toSync.length > 0) {
-              await supabase.from('bookmarks').insert(
-                toSync.map(id => ({ user_id: session.user.id, career_id: id }))
-              )
-            }
-          }
-
-          // Atomic sync of profile and quiz
-          syncAuthData(profileRes.data, quizRes.data)
+          fetchAllUserData(session.user)
         } else {
-          setUser(null)
-          setProfile(null)
           setAuthLoading(false)
         }
-
-        if (event === 'SIGNED_OUT') {
-          fullReset()
-        }
-      } catch (err) {
-        setUser(null)
-        setProfile(null)
+      } else if (event === 'SIGNED_OUT') {
+        fullReset()
         setAuthLoading(false)
+      } else {
+        // For other events like PASSWORD_RECOVERY etc
+        if (!session?.user) setAuthLoading(false)
       }
     })
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])
 
   const signInWithGoogle = async () => {
-    // NOTE: The Google OAuth callback URL in the Supabase dashboard must be set to:
-    // - http://localhost:5173/auth (for development)
-    // - https://pathseeker.app/auth (for production)
+    setAuthLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth`
       }
     })
+    if (error) setAuthLoading(false)
     return { error }
   }
 
   const signInWithEmail = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+    setAuthLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setAuthLoading(false)
     return { error }
   }
 
   const signInWithPhone = async (phone, password) => {
-    // Note: This assumes password-based auth for phone for simplicity as requested
-    const { data, error } = await supabase.auth.signInWithPassword({
+    setAuthLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({
       phone: `+91${phone}`,
       password
     })
+    if (error) setAuthLoading(false)
     return { error }
   }
 
   const signUp = async (identifier, password, method) => {
+    setAuthLoading(true)
     let signUpData = {}
     if (method === 'email') {
       signUpData = { email: identifier, password }
@@ -142,7 +122,8 @@ export function useAuth() {
       signUpData = { phone: `+91${identifier}`, password }
     }
 
-    const { data, error } = await supabase.auth.signUp(signUpData)
+    const { error } = await supabase.auth.signUp(signUpData)
+    if (error) setAuthLoading(false)
     return { error }
   }
 
@@ -162,24 +143,11 @@ export function useAuth() {
   }
 
   const signOut = async () => {
-    // Always clear local app state first so UI signs out immediately.
     fullReset()
     localStorage.removeItem('seeker-auth')
-
-    try {
-      const { error } = await supabase.auth.signOut({ scope: 'global' })
-      if (!error) return { error: null }
-
-      // Fallback to local sign-out if global session invalidation fails.
-      const fallback = await supabase.auth.signOut()
-      return { error: fallback.error || null }
-    } catch (err) {
-      return { error: err }
-    }
+    const { error } = await supabase.auth.signOut()
+    return { error }
   }
-
-  const isAuthenticated = !!user
-  const profileComplete = !!profile
 
   return {
     user,
@@ -191,7 +159,7 @@ export function useAuth() {
     signUp,
     saveProfile,
     signOut,
-    isAuthenticated,
-    profileComplete
+    isAuthenticated: !!user,
+    profileComplete: !!profile
   }
 }

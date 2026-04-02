@@ -15,10 +15,11 @@ export function useScoreQuiz() {
     onSuccess: async (data) => {
       setResults(data.recommendedCareers, data.scores || data.recommendedCareers, data.isMinimalData)
       
-      // Save quiz results if user is authenticated
-      const { user, quizAnswers, customAnswers } = useAppStore.getState()
+      // Save quiz results and persona if user is authenticated
+      const { user, quizAnswers, customAnswers, setProfile } = useAppStore.getState()
       if (user) {
         try {
+          // 1. Save the quiz attempt
           await supabase.from('quiz_attempts').insert({
             user_id: user.id,
             answers: quizAnswers,
@@ -26,8 +27,33 @@ export function useScoreQuiz() {
             scores: data.recommendedCareers,
             taken_at: new Date().toISOString()
           })
+
+          // 2. Save the persona to the profile
+          if (data.persona) {
+            const { data: updatedProfile, error: profileError } = await supabase
+              .from('profiles')
+              .update({
+                persona_summary: data.persona.summary,
+                personality_traits: data.persona.traits
+              })
+              .eq('id', user.id)
+              .select()
+              .single()
+            
+            if (updatedProfile) {
+              setProfile(updatedProfile)
+            }
+
+            // 3. Save to user_personas history table
+            await supabase.from('user_personas').insert({
+              user_id: user.id,
+              summary: data.persona.summary,
+              traits: data.persona.traits,
+              interests: data.persona.interests
+            })
+          }
         } catch (err) {
-          console.error('Failed to save quiz attempt:', err)
+          console.error('Failed to save quiz attempt or persona:', err)
         }
       }
     },

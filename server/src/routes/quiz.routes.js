@@ -13,5 +13,7 @@ const interpretLimit = rateLimit({
 router.get('/', getQuiz)
 router.post('/score', scoreQuiz)
 router.post('/interpret-answer', interpretLimit, interpretCustomAnswer)
+router.post('/interpret', interpretLimit, interpretCustomAnswer)
+router.post('/interpret_answer', interpretLimit, interpretCustomAnswer)
 
 export default router

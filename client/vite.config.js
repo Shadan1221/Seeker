@@ -21,6 +21,9 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000,
   },
+  optimizeDeps: {
+    force: true, // Prevents ERR_CACHE_READ_FAILURE due to corrupt .vite/deps caching across restarts
+  },
   server: {
     port: 5173,
     strictPort: true,

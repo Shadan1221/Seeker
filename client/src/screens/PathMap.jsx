@@ -72,12 +72,16 @@ export default function PathMap() {
   const setSelectedCareer = useAppStore(s => s.setSelectedCareer)
   const profile = useAppStore(s => s.profile)
   
-  const { 
-    enterCompareMode, exitCompareMode, 
-    toggleCompareSelection, compareSelections, 
-    compareMode, compareResult, setCompareResult, setCompareLoading, compareLoading,
-    isMinimalData
-  } = useAppStore()
+  const enterCompareMode = useAppStore(s => s.enterCompareMode)
+  const exitCompareMode = useAppStore(s => s.exitCompareMode)
+  const toggleCompareSelection = useAppStore(s => s.toggleCompareSelection)
+  const compareSelections = useAppStore(s => s.compareSelections)
+  const compareMode = useAppStore(s => s.compareMode)
+  const compareResult = useAppStore(s => s.compareResult)
+  const setCompareResult = useAppStore(s => s.setCompareResult)
+  const setCompareLoading = useAppStore(s => s.setCompareLoading)
+  const compareLoading = useAppStore(s => s.compareLoading)
+  const isMinimalData = useAppStore(s => s.isMinimalData)
 
   const [hoveredCluster, setHoveredCluster] = useState(null)
   const [hoveredCareer, setHoveredCareer] = useState(null)

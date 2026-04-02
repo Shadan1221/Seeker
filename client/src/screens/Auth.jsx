@@ -59,7 +59,7 @@ export default function Auth() {
     saveProfile, 
     user, 
     profile,
-    loading 
+    loading: authLoading
   } = useAuth()
   const quizCompleted = useAppStore(s => s.quizCompleted)
 
@@ -91,11 +91,11 @@ export default function Auth() {
 
   // Redirect if already authenticated and profile is complete
   useEffect(() => {
-    // Crucial: Wait until loading is false to ensure quizCompleted is synced from DB
-    if (!loading && user && profile && !welcomeMode) {
+    // Wait until auth bootstrap is complete so quiz/profile state is accurate.
+    if (!authLoading && user && profile && !welcomeMode) {
       navigate(quizCompleted ? '/paths' : '/quiz')
     }
-  }, [user, profile, navigate, quizCompleted, welcomeMode, loading])
+  }, [user, profile, navigate, quizCompleted, welcomeMode, authLoading])
 
   // Handle step 2 from URL
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function Auth() {
     e.preventDefault()
     if (!validateStep1()) return
 
-    setLoading(true)
+    setFormLoading(true)
     let res
     if (mode === 'signin') {
       if (activeTab === 'email') res = await signInWithEmail(formData.email, formData.password)
@@ -237,11 +237,11 @@ export default function Auth() {
     if (res?.error) {
       setError(SUPABASE_ERRORS[res.error.code] || SUPABASE_ERRORS[res.error.message] || 'Something went wrong. Please try again.')
     }
-    setLoading(false)
+    setFormLoading(false)
   }
 
   const handleGoogleAuth = async () => {
-    setLoading(true)
+    setFormLoading(true)
     const { error } = await signInWithGoogle()
     if (error) {
       const raw = `${error.code || ''} ${error.message || ''}`.toLowerCase()
@@ -251,7 +251,7 @@ export default function Auth() {
         setError(error.message)
       }
     }
-    setLoading(false)
+    setFormLoading(false)
   }
 
   const handleProfileComplete = async (e) => {
@@ -261,7 +261,7 @@ export default function Auth() {
     if (formData.institutionType === 'school' && !formData.schoolClass) return
     if (formData.institutionType === 'university' && !formData.degree) return
 
-    setLoading(true)
+    setFormLoading(true)
     const profileData = {
       username: formData.username,
       age: parseInt(formData.age),
@@ -275,7 +275,7 @@ export default function Auth() {
     const { error } = await saveProfile(profileData)
     if (error) {
       setError(error.message)
-      setLoading(false)
+      setFormLoading(false)
     } else {
       setWelcomeMode(true)
       setTimeout(() => {
@@ -487,10 +487,10 @@ export default function Auth() {
 
                 <SeekerButton
                   type="submit"
-                  disabled={loading}
+                  disabled={formLoading}
                   className="w-full py-5 text-sm"
                 >
-                  {loading ? (
+                  {formLoading ? (
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
                       <Icon name="progress_activity" className="!text-lg" />
                     </motion.div>
@@ -518,7 +518,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={handleGoogleAuth}
-                  disabled={loading}
+                  disabled={formLoading}
                   className="w-full border-2 border-ink-15 bg-white/75 hover:bg-white transition-colors px-5 py-4 rounded-xl text-lg font-medium flex items-center justify-center gap-3 disabled:opacity-60"
                 >
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
@@ -711,7 +711,7 @@ export default function Auth() {
                 <SeekerButton
                   type="submit"
                   disabled={
-                    loading || 
+                    formLoading || 
                     formData.username.length < 3 ||
                     usernameAvailable === false ||
                     !formData.age || 
@@ -722,7 +722,7 @@ export default function Auth() {
                   }
                   className="w-full py-5 text-sm"
                 >
-                  {loading ? (
+                  {formLoading ? (
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
                       <Icon name="progress_activity" className="!text-lg" />
                     </motion.div>

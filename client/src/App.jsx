@@ -1,7 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { lazy, Suspense } from 'react'
-import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+import { ErrorBoundary, RouteBoundary } from './components/ErrorBoundary.jsx'
 import CustomCursor from './components/layout/CustomCursor.jsx'
 import BookmarksPanel from './components/career/BookmarksPanel.jsx'
 import CareerComparison from './components/career/CareerComparison.jsx'
@@ -9,15 +9,44 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import useAppStore from './store/useAppStore.js'
 import { useCareers } from './hooks/useCareers.js'
+import Quiz from './screens/Quiz.jsx'
+import ResultsLoading from './screens/ResultsLoading.jsx'
+
+// Wrapper for React.lazy to retry on chunk load failure ("Failed to fetch dynamically imported module")
+function lazyRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      return await componentImport()
+    } catch (error) {
+      const isChunkLoadFailed = error.message && (
+        error.message.includes('fetch dynamically imported module') ||
+        error.message.includes('Importing a module script failed') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('net::ERR_CACHE_READ_FAILURE')
+      )
+      
+      const retryKey = `retry-lazy-${window.location.pathname}`
+      
+      if (isChunkLoadFailed && !sessionStorage.getItem(retryKey)) {
+        sessionStorage.setItem(retryKey, 'true')
+        window.location.reload()
+        // Return a never-resolving promise so React doesn't error out while reloading
+        return new Promise(() => {})
+      }
+      
+      // If it's another error or we already retried, throw it so ErrorBoundary catches it
+      sessionStorage.removeItem(retryKey)
+      throw error
+    }
+  })
+}
 
 // Route-based code splitting
-const Splash = lazy(() => import('./screens/Splash'))
-const StreamGuide = lazy(() => import('./screens/StreamGuide'))
-const Quiz = lazy(() => import('./screens/Quiz'))
-const ResultsLoading = lazy(() => import('./screens/ResultsLoading'))
-const PathMap = lazy(() => import('./screens/PathMap'))
-const Chat = lazy(() => import('./screens/Chat'))
-const Auth = lazy(() => import('./screens/Auth'))
+const Splash = lazyRetry(() => import('./screens/Splash'))
+const StreamGuide = lazyRetry(() => import('./screens/StreamGuide'))
+const PathMap = lazyRetry(() => import('./screens/PathMap'))
+const Chat = lazyRetry(() => import('./screens/Chat'))
+const Auth = lazyRetry(() => import('./screens/Auth'))
 
 function LoadingFallback() {
   return (
@@ -28,15 +57,16 @@ function LoadingFallback() {
 }
 
 const router = createBrowserRouter([
-  { path: '/', element: <Auth /> },
-  { path: '/auth', element: <Auth /> },
+  { path: '/', element: <Auth />, errorElement: <RouteBoundary /> },
+  { path: '/auth', element: <Auth />, errorElement: <RouteBoundary /> },
   {
     path: '/welcome',
     element: (
       <ProtectedRoute>
         <Splash />
       </ProtectedRoute>
-    )
+    ),
+    errorElement: <RouteBoundary />
   },
   {
     path: '/streams',
@@ -44,7 +74,8 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <StreamGuide />
       </ProtectedRoute>
-    )
+    ),
+    errorElement: <RouteBoundary />
   },
   {
     path: '/quiz',
@@ -52,7 +83,8 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Quiz />
       </ProtectedRoute>
-    )
+    ),
+    errorElement: <RouteBoundary />
   },
   {
     path: '/results',
@@ -60,7 +92,8 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <ResultsLoading />
       </ProtectedRoute>
-    )
+    ),
+    errorElement: <RouteBoundary />
   },
   { 
     path: '/paths', 
@@ -68,7 +101,8 @@ const router = createBrowserRouter([
       <ProtectedRoute requireQuiz>
         <PathMap />
       </ProtectedRoute>
-    ) 
+    ),
+    errorElement: <RouteBoundary /> 
   },
   { 
     path: '/chat', 
@@ -76,7 +110,8 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Chat />
       </ProtectedRoute>
-    ) 
+    ),
+    errorElement: <RouteBoundary /> 
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ])

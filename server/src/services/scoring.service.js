@@ -48,6 +48,35 @@ function getBroadDefaultCareers() {
   })
 }
 
+function generatePersona(tagMap) {
+  const clusters = {
+    'Technology & Data': { traits: ['Analytical', 'Logical', 'Problem Solver'], keywords: ['Digital Systems', 'AI', 'Efficiency'] },
+    'Science & Health': { traits: ['Empathetic', 'Methodical', 'Detail Oriented'], keywords: ['Medicine', 'Research', 'Well-being'] },
+    'Business & Law': { traits: ['Strategic', 'Persuasive', 'Organized'], keywords: ['Leadership', 'Justice', 'Value Creation'] },
+    'Creative & Expression': { traits: ['Imaginative', 'Expressive', 'Aesthetic'], keywords: ['Art', 'Storytelling', 'Design'] },
+    'People & Society': { traits: ['Socially Aware', 'Communicative', 'Supportive'], keywords: ['Education', 'Community', 'Human Connection'] },
+    'Physical & Outdoors': { traits: ['Active', 'Practical', 'Adventurous'], keywords: ['Nature', 'Hands-on', 'Movement'] }
+  }
+
+  const clusterScores = {}
+  CAREERS.forEach(career => {
+    const score = career.tags.reduce((acc, tag) => acc + (tagMap[tag] || 0), 0)
+    clusterScores[career.cluster] = (clusterScores[career.cluster] || 0) + score
+  })
+
+  const topClusters = Object.entries(clusterScores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(c => c[0])
+
+  const traits = [...new Set(topClusters.flatMap(c => clusters[c]?.traits || []))].slice(0, 5)
+  const interests = [...new Set(topClusters.flatMap(c => clusters[c]?.keywords || []))].slice(0, 4)
+
+  const summary = `You are a ${traits[0]} and ${traits[1]} individual who finds fulfillment in ${interests[0]} and ${interests[1]}. You naturally gravitate toward ${topClusters[0]} where you can leverage your ${traits[2]} nature to make a meaningful impact.`
+
+  return { summary, traits, interests, topClusters }
+}
+
 export function scoreAnswers(answers, customAnswers = {}) {
   const totalAnswered = Object.keys(answers).length + Object.keys(customAnswers).length
 
@@ -55,11 +84,17 @@ export function scoreAnswers(answers, customAnswers = {}) {
   if (totalAnswered < 3) {
     return {
       recommendedCareers: getBroadDefaultCareers(),
-      isMinimalData: true
+      isMinimalData: true,
+      persona: { 
+        summary: "We're still getting to know you. Answer more questions to build your persona!", 
+        traits: [], 
+        interests: [] 
+      }
     }
   }
 
   const tagMap = buildTagFrequencyMap(answers, customAnswers)
+  const persona = generatePersona(tagMap)
 
   const scored = CAREERS.map((career) => {
     const score = career.tags.reduce((acc, tag) => acc + (tagMap[tag] || 0), 0)
@@ -76,7 +111,7 @@ export function scoreAnswers(answers, customAnswers = {}) {
     percentage: Math.round((s.score / maxScore) * 100),
   }))
 
-  return { recommendedCareers }
+  return { recommendedCareers, persona }
 }
 
 export function getTopCareers(answers, customAnswers = {}, n = 10) {

@@ -8,7 +8,7 @@ const useAppStore = create(
       // Auth State
       user: null,
       profile: null,
-      authLoading: false,
+      authLoading: true,
 
       quizAnswers: {},
       skippedQuestions: [],   // array of question IDs that were skipped
@@ -17,6 +17,7 @@ const useAppStore = create(
       quizCompleted: false,
       recommendedCareers: [],
       careerScores: [],
+      persona: null,          // { summary, traits, interests }
       isMinimalData: false,
 
       galaxyFilter: 'recommended',
@@ -136,6 +137,10 @@ const useAppStore = create(
         customAnswers: attempt?.custom_answers || {},
         recommendedCareers: attempt?.scores || [],
         careerScores: attempt?.scores || [],
+        persona: profile?.persona_summary ? {
+          summary: profile.persona_summary,
+          traits: profile.personality_traits || []
+        } : null,
         quizCompleted: !!attempt,
         isMinimalData: false,
         authLoading: false
