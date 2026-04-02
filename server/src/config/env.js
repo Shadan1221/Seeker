@@ -1,4 +1,12 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Support both root-level .env and server/.env when running via npm workspaces.
+dotenv.config({ path: resolve(__dirname, '../../../.env') })
+dotenv.config({ path: resolve(__dirname, '../../.env'), override: true })
 
 function requireEnv(key) {
   const val = process.env[key]

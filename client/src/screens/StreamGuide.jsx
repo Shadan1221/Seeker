@@ -12,6 +12,59 @@ const myths = [
   "Your Class 10 marks do not measure your potential. They measure your obedience."
 ]
 
+const EXAM_LINKS = {
+  'JEE Main': 'https://jeemain.nta.ac.in/',
+  'BITSAT': 'https://www.bitsadmission.com/',
+  'NDA': 'https://upsc.gov.in/examinations/active-examinations/nda-na-exam',
+  'NATA': 'https://www.nata.in/',
+  'NEET UG': 'https://neet.nta.nic.in/',
+  'ICAR AIEEA': 'https://icar.nta.nic.in/',
+  'CA Foundation': 'https://www.icai.org/post/foundation-course',
+  'CLAT': 'https://consortiumofnlus.ac.in/clat-2026/',
+  'IPMAT': 'https://www.iimidr.ac.in/academic-programmes/five-year-integrated-programme-in-management-ipm/admission-procedure/',
+  'CUET': 'https://cuet.nta.nic.in/',
+  'TISS BAT': 'https://admissions.tiss.edu/',
+  'NID DAT': 'https://admissions.nid.edu/',
+  'NIFT': 'https://www.nift.ac.in/admission',
+  'NCHMCT': 'https://nchmjee.nta.nic.in/',
+}
+
+const COLLEGE_LINKS = {
+  'IITs': 'https://www.iitb.ac.in/',
+  'NITs': 'https://www.nitw.ac.in/',
+  'BITS': 'https://www.bits-pilani.ac.in/',
+  'SPA': 'https://spa.ac.in/',
+  'AIIMS': 'https://www.aiims.edu/',
+  'CMC': 'https://www.cmch-vellore.edu/',
+  'IISER': 'https://www.iiseradmission.in/',
+  'SRCC': 'https://www.srcc.edu/',
+  'IIM Indore (IPM)': 'https://www.iimidr.ac.in/academic-programmes/five-year-integrated-programme-in-management-ipm/',
+  'NLU': 'https://www.nludelhi.ac.in/',
+  "St. Stephen's": 'https://www.ststephens.edu/',
+  'TISS': 'https://www.tiss.edu/',
+  'NID': 'https://www.nid.edu/',
+  'Ashoka': 'https://www.ashoka.edu.in/',
+  'IHMs': 'https://nchm.gov.in/',
+}
+
+function renderExternalLink(label, href, className) {
+  if (!href) {
+    return <span className={className}>{label}</span>
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+      title={`Open official website for ${label}`}
+    >
+      {label}
+    </a>
+  )
+}
+
 const streamsData = [
   {
     id: "science-pcm",
@@ -199,13 +252,29 @@ export default function StreamGuide() {
                               <div className="text-[10px] font-black tracking-[0.2em] text-ink-30 uppercase mb-4">Key Entrance Gates</div>
                               <div className="flex flex-wrap gap-2">
                                 {stream.exams.split(', ').map(e => (
-                                  <span key={e} className="px-4 py-2 bg-ink text-paper text-xs font-bold rounded-lg shadow-md">{e}</span>
+                                  <span key={e}>
+                                    {renderExternalLink(
+                                      e,
+                                      EXAM_LINKS[e],
+                                      'px-4 py-2 bg-ink text-paper text-xs font-bold rounded-lg shadow-md hover:bg-accent transition-colors inline-flex'
+                                    )}
+                                  </span>
                                 ))}
                               </div>
                             </div>
                             <div>
                               <div className="text-[10px] font-black tracking-[0.2em] text-ink-30 uppercase mb-4">Premier Institutions</div>
-                              <p className="text-lg font-serif text-ink tracking-tight">{stream.colleges}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {stream.colleges.split(', ').map(c => (
+                                  <span key={c}>
+                                    {renderExternalLink(
+                                      c,
+                                      COLLEGE_LINKS[c],
+                                      'px-4 py-2 bg-paper border border-ink-10 text-ink text-xs md:text-sm font-bold rounded-lg hover:border-accent hover:text-accent transition-colors inline-flex'
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                          </div>
 
