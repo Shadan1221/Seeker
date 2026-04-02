@@ -5,6 +5,7 @@ import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import SeekerNav from '../components/layout/SeekerNav.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import useAppStore from '../store/useAppStore'
 
 const quotes = [
   { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
