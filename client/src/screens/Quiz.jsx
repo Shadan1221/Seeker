@@ -26,6 +26,14 @@ export default function Quiz() {
   const skipQuestion = useAppStore(s => s.skipQuestion)
   const customAnswers = useAppStore(s => s.customAnswers)
   const recordCustomAnswer = useAppStore(s => s.recordCustomAnswer)
+  const quizCompleted = useAppStore(s => s.quizCompleted)
+
+  // Redirect if already completed
+  useEffect(() => {
+    if (quizCompleted && questions.length > 0) {
+      navigate('/paths')
+    }
+  }, [quizCompleted, navigate, questions.length])
 
   // Restore state if returning
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import useAppStore from '../store/useAppStore.js'
@@ -11,6 +11,7 @@ export default function ResultsLoading() {
   const quizAnswers = useAppStore(s => s.quizAnswers)
   const customAnswers = useAppStore(s => s.customAnswers)
   const { mutate: scoreQuiz } = useScoreQuiz()
+  const hasTriggered = useRef(false)
 
   useEffect(() => {
     // If user somehow gets here without finishing, send them back
@@ -19,9 +20,12 @@ export default function ResultsLoading() {
         if (!useAppStore.getState().quizCompleted) {
           navigate('/quiz')
         }
-      }, 500)
+      }, 1000) // Increased buffer
       return () => clearTimeout(timer)
     }
+
+    if (hasTriggered.current) return
+    hasTriggered.current = true
 
     // Trigger backend scoring
     scoreQuiz({ answers: quizAnswers, customAnswers })
@@ -29,10 +33,9 @@ export default function ResultsLoading() {
     const timer = setTimeout(() => {
       navigate('/paths')
     }, 3000)
-    
+
     return () => clearTimeout(timer)
   }, [navigate, quizCompleted, quizAnswers, customAnswers, scoreQuiz])
-
   const pathVariants = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: { 

@@ -131,21 +131,21 @@ const useAppStore = create(
         quizCompleted: true,
         isMinimalData: false
       }),
-      syncAuthData: (profile, attempt) => set({
+      syncAuthData: (profile, attempt) => set((state) => ({
         profile: profile || null,
-        quizAnswers: attempt?.answers || {},
-        customAnswers: attempt?.custom_answers || {},
-        skippedQuestions: attempt?.skipped_questions || [],
-        recommendedCareers: attempt?.scores || [],
-        careerScores: attempt?.scores || [],
-        persona: profile?.persona_summary ? {
+        quizAnswers: (Object.keys(state.quizAnswers).length > 0) ? state.quizAnswers : (attempt?.answers || {}),
+        customAnswers: (Object.keys(state.customAnswers).length > 0) ? state.customAnswers : (attempt?.custom_answers || {}),
+        skippedQuestions: (state.skippedQuestions.length > 0) ? state.skippedQuestions : (attempt?.skipped_questions || []),
+        recommendedCareers: (state.recommendedCareers.length > 0) ? state.recommendedCareers : (attempt?.scores || []),
+        careerScores: (state.careerScores.length > 0) ? state.careerScores : (attempt?.scores || []),
+        persona: state.persona || (profile?.persona_summary ? {
           summary: profile.persona_summary,
           traits: profile.personality_traits || []
-        } : null,
-        quizCompleted: !!attempt,
+        } : null),
+        quizCompleted: state.quizCompleted || !!attempt,
         isMinimalData: false,
         authLoading: false
-      }),
+      })),
 
       setGalaxyFilter: (galaxyFilter) => set({ galaxyFilter }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
