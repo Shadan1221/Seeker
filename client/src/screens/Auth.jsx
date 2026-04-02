@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import useAppStore from '../store/useAppStore'
@@ -23,14 +24,13 @@ const CLASSES = [
 
 const ROLES = [
   { id: 'student', label: 'Student', icon: 'school' },
-  { id: 'teacher', label: 'Teacher', icon: 'person_teach' },
+  { id: 'teacher', label: 'Teacher', icon: 'person' },
   { id: 'career_counsellor', label: 'Career Counsellor', icon: 'support_agent' }
 ]
 
 const SUPABASE_ERRORS = {
   'invalid_credentials': "That email or password isn't right. Please try again.",
   'email_already_exists': "This email is already registered. Try signing in instead.",
-  'phone_already_exists': "This number is already registered. Try signing in instead.",
   'weak_password': "Password must be at least 8 characters with one number.",
   'invalid_email': "Please enter a valid email address.",
   'signup_disabled': "Sign up is currently unavailable. Please try again later.",
@@ -53,7 +53,6 @@ export default function Auth() {
   const step = parseInt(searchParams.get('step')) || 1
   const { 
     signInWithEmail, 
-    signInWithPhone, 
     signInWithGoogle, 
     signUp, 
     saveProfile, 
@@ -63,15 +62,14 @@ export default function Auth() {
   } = useAuth()
   const quizCompleted = useAppStore(s => s.quizCompleted)
 
-  const [activeTab, setActiveTab] = useState('email')
   const [formLoading, setFormLoading] = useState(false)
   const [error, setError] = useState('')
   const [welcomeMode, setWelcomeMode] = useState(false)
+  const [verificationSent, setVerificationSent] = useState(false)
 
   // Form states
   const [formData, setFormData] = useState({
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
     username: '',
@@ -187,32 +185,17 @@ export default function Auth() {
   }
 
   const validateStep1 = () => {
-    if (activeTab === 'email') {
-      if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-        setError('Please enter a valid email address.')
-        return false
-      }
-      if (formData.password.length < 8 || !/\d/.test(formData.password)) {
-        setError('Password must be at least 8 characters with one number.')
-        return false
-      }
-      if (mode === 'signup' && formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match.')
-        return false
-      }
-    } else if (activeTab === 'phone') {
-      if (!formData.phone.match(/^[6-9]\d{9}$/)) {
-        setError('Please enter a valid Indian mobile number (10 digits).')
-        return false
-      }
-      if (formData.password.length < 8 || !/\d/.test(formData.password)) {
-        setError('Password must be at least 8 characters with one number.')
-        return false
-      }
-      if (mode === 'signup' && formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match.')
-        return false
-      }
+    if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      setError('Please enter a valid email address.')
+      return false
+    }
+    if (formData.password.length < 8 || !/\d/.test(formData.password)) {
+      setError('Password must be at least 8 characters with one number.')
+      return false
+    }
+    if (mode === 'signup' && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.')
+      return false
     }
     return true
   }
@@ -224,13 +207,12 @@ export default function Auth() {
     setFormLoading(true)
     let res
     if (mode === 'signin') {
-      if (activeTab === 'email') res = await signInWithEmail(formData.email, formData.password)
-      else if (activeTab === 'phone') res = await signInWithPhone(formData.phone, formData.password)
+      res = await signInWithEmail(formData.email, formData.password)
     } else {
-      const identifier = activeTab === 'email' ? formData.email : formData.phone
-      res = await signUp(identifier, formData.password, activeTab)
+      res = await signUp(formData.email, formData.password)
       if (!res.error) {
-        setSearchParams({ mode: 'signup', step: 2 })
+        setVerificationSent(true)
+        toast.success('Verification email sent! Please check your inbox.', { duration: 6000 })
       }
     }
 
@@ -369,7 +351,33 @@ export default function Auth() {
         </header>
 
         <AnimatePresence mode="wait">
-          {step === 1 ? (
+          {verificationSent ? (
+            <motion.div
+              key="verification"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="text-center space-y-6 py-12 bg-white/40 border border-ink-10 p-8 rounded-3xl"
+            >
+              <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon name="mail" size={40} className="text-accent" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Check your email</h2>
+              <p className="text-ink-60 text-lg">
+                We've sent a verification link to <span className="text-ink font-bold">{formData.email}</span>.
+                Please verify your email to proceed.
+              </p>
+              <button
+                onClick={() => {
+                  setVerificationSent(false)
+                  setSearchParams({ mode: 'signin' })
+                }}
+                className="text-accent font-bold hover:underline block mx-auto pt-4"
+              >
+                Back to Sign In
+              </button>
+            </motion.div>
+          ) : step === 1 ? (
             <motion.div
               key="step1"
               initial={{ opacity: 0, x: 20 }}
@@ -377,59 +385,19 @@ export default function Auth() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-8"
             >
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('email'); setError('') }}
-                  className={`flex-1 py-2.5 border text-xs font-bold tracking-widest uppercase transition-colors ${
-                    activeTab === 'email' ? 'border-accent text-accent bg-accent/5' : 'border-ink-10 text-ink-40 hover:text-ink-70'
-                  }`}
-                >
-                  Email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('phone'); setError('') }}
-                  className={`flex-1 py-2.5 border text-xs font-bold tracking-widest uppercase transition-colors ${
-                    activeTab === 'phone' ? 'border-accent text-accent bg-accent/5' : 'border-ink-10 text-ink-40 hover:text-ink-70'
-                  }`}
-                >
-                  Phone
-                </button>
-              </div>
-
               <form onSubmit={handleAuth} className="space-y-5">
-                {activeTab === 'email' ? (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black tracking-widest uppercase text-ink-40">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="you@example.com"
-                      required
-                      className="w-full bg-white/55 border border-ink-10 px-5 py-4 text-lg focus:border-accent transition-colors outline-none"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black tracking-widest uppercase text-ink-40">Phone</label>
-                    <div className="flex">
-                      <div className="bg-white/55 border border-r-0 border-ink-10 px-4 py-4 text-ink-50">+91</div>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        placeholder="9876543210"
-                        required
-                        maxLength={10}
-                        className="w-full bg-white/55 border border-ink-10 px-5 py-4 text-lg focus:border-accent transition-colors outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black tracking-widest uppercase text-ink-40">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="you@example.com"
+                    required
+                    className="w-full bg-white/55 border border-ink-10 px-5 py-4 text-lg focus:border-accent transition-colors outline-none"
+                  />
+                </div>
 
                 <div className="space-y-2 relative">
                   <div className="flex items-center justify-between">
@@ -507,14 +475,6 @@ export default function Auth() {
               </div>
 
               <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('phone'); setError('') }}
-                  className="w-full border-2 border-ink-15 bg-white/75 hover:bg-white transition-colors px-5 py-4 rounded-xl text-lg font-medium flex items-center justify-center gap-3"
-                >
-                  <Icon name="phone_iphone" size={22} />
-                  {activeTab === 'phone' ? 'Using Phone Number' : 'Continue with Phone'}
-                </button>
                 <button
                   type="button"
                   onClick={handleGoogleAuth}

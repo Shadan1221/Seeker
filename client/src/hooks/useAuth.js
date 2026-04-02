@@ -108,26 +108,9 @@ export function useAuth() {
     return { error }
   }
 
-  const signInWithPhone = async (phone, password) => {
+  const signUp = async (email, password) => {
     setAuthLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      phone: `+91${phone}`,
-      password
-    })
-    if (error) setAuthLoading(false)
-    return { error }
-  }
-
-  const signUp = async (identifier, password, method) => {
-    setAuthLoading(true)
-    let signUpData = {}
-    if (method === 'email') {
-      signUpData = { email: identifier, password }
-    } else if (method === 'phone') {
-      signUpData = { phone: `+91${identifier}`, password }
-    }
-
-    const { error } = await supabase.auth.signUp(signUpData)
+    const { error } = await supabase.auth.signUp({ email, password })
     if (error) setAuthLoading(false)
     return { error }
   }
@@ -160,7 +143,6 @@ export function useAuth() {
     loading: authLoading,
     signInWithGoogle,
     signInWithEmail,
-    signInWithPhone,
     signUp,
     saveProfile,
     signOut,
