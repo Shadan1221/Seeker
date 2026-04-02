@@ -389,9 +389,15 @@ function TabOverview({ career }) {
           <h3 className="text-xs font-bold tracking-[0.2em] text-ink-30 uppercase mb-5">Inspirational Figures</h3>
           <div className="flex flex-wrap gap-3">
             {career.celebs.map(c => (
-              <span key={c} className="text-xs font-bold tracking-tight px-5 py-2.5 bg-paper border border-ink-10 rounded-full text-ink shadow-sm">
-                {c}
-              </span>
+              <a 
+                key={c} 
+                href={`https://en.wikipedia.org/wiki/${encodeURIComponent(c.split(' (')[0])}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold tracking-tight px-5 py-2.5 bg-paper border border-ink-10 rounded-full text-ink shadow-sm hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
+              >
+                {c} ↗
+              </a>
             ))}
           </div>
         </div>
@@ -420,7 +426,15 @@ function TabEducation({ career }) {
            <span className="text-[10px] font-black tracking-[0.2em] text-ink-30 uppercase block mb-3">Entrance Gates</span>
            <div className="flex flex-wrap gap-2.5">
              {ed.entrance_exams.map(e => (
-               <span key={e} className="text-xs font-bold px-4 py-2 bg-surface border border-ink-10 rounded-xl text-ink">{e}</span>
+               <a 
+                 key={e} 
+                 href={`https://www.google.com/search?q=${encodeURIComponent(e + ' official exam India')}`}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="text-xs font-bold px-4 py-2 bg-surface border border-ink-10 rounded-xl text-ink hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
+               >
+                 {e} ↗
+               </a>
              ))}
            </div>
         </div>
@@ -463,7 +477,18 @@ function TabEducation({ career }) {
   )
 }
 
+function getProgressionDescription(career, step, index) {
+  const total = career.progression.length
+  if (index === 0) return `The entry point into ${career.title}. You'll be learning fundamentals, working under supervision, and building core competencies. Typically reached after completing your primary qualification.`
+  if (index === 1) return `With 1–3 years of experience, you start taking on more independent work. Domain knowledge deepens and you begin building a professional reputation.`
+  if (index === Math.floor(total / 2)) return `A mid-career milestone with significant responsibilities. Salary grows substantially — typically the ${career.salary.mid} range.`
+  if (index === total - 2) return `A senior leadership or specialist role managing projects, teams, or clients at scale. Expertise built over many years makes you highly valuable.`
+  if (index === total - 1) return `The peak of the conventional ${career.title} career ladder. Compensation reaches the ${career.salary.senior} range. Typically requires 10–20+ years of sustained excellence.`
+  return `An intermediate step building on prior experience toward greater responsibility and compensation.`
+}
+
 function TabPath({ career }) {
+  const [expandedStep, setExpandedStep] = useState(null)
   return (
     <div className="space-y-10 pb-10">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -491,16 +516,45 @@ function TabPath({ career }) {
            Career Progression
         </h3>
         <div className="flex flex-col gap-3">
-          {career.progression.map((p, i) => (
-             <div key={p} className="flex items-center gap-5">
-               <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border border-ink-10 text-ink-30">
-                 {i + 1}
+          {career.progression.map((p, i) => {
+             const total = career.progression.length
+             const isExpanded = expandedStep === i
+             return (
+               <div key={p} className="flex flex-col gap-2">
+                 <button 
+                   onClick={() => setExpandedStep(isExpanded ? null : i)}
+                   className="flex items-center gap-5 w-full text-left group"
+                 >
+                   <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-colors ${isExpanded ? 'border-accent text-accent' : 'border-ink-10 text-ink-30'}`}>
+                     {i + 1}
+                   </div>
+                   <div className={`flex-1 p-4 rounded-2xl border transition-all flex items-center justify-between ${isExpanded ? 'bg-surface border-accent' : i === 0 ? 'bg-surface border-ink-10' : 'bg-paper border-ink-5 opacity-60 group-hover:opacity-100'}`}>
+                     <span className="text-sm font-bold text-ink">{p}</span>
+                     <Icon name={isExpanded ? 'expand_less' : 'expand_more'} size={20} className={isExpanded ? 'text-accent' : 'text-ink-20'} />
+                   </div>
+                 </button>
+                 <AnimatePresence>
+                   {isExpanded && (
+                     <motion.div
+                       initial={{ opacity: 0, y: -4 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -4 }}
+                       className="ml-[52px] p-4 bg-surface/50 rounded-2xl border border-ink-5"
+                     >
+                       <p className="text-sm text-ink-60 leading-relaxed">
+                         {getProgressionDescription(career, p, i)}
+                       </p>
+                       {(i === 0 || i === Math.floor(total / 2) || i === total - 1) && (
+                         <div className="mt-2 text-xs font-bold text-accent">
+                           {i === 0 ? career.salary.fresher : i === total - 1 ? career.salary.senior : career.salary.mid}
+                         </div>
+                       )}
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
                </div>
-               <div className={`flex-1 p-4 rounded-2xl border transition-all ${i === 0 ? 'bg-surface border-ink-10' : 'bg-paper border-ink-5 opacity-60'}`}>
-                 <span className="text-sm font-bold text-ink">{p}</span>
-               </div>
-             </div>
-          ))}
+             )
+          })}
         </div>
       </div>
     </div>

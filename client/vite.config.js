@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
+  // Load env vars from repository root so workspace scripts can share one .env file.
+  envDir: '..',
   plugins: [react()],
   resolve: {
     alias: {
