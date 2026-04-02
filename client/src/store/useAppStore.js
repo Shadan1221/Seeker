@@ -122,6 +122,14 @@ const useAppStore = create(
         careerScores: scores,
         isMinimalData: isMinimal
       }),
+      setFromAttempt: (attempt) => set({
+        quizAnswers: attempt.answers || {},
+        customAnswers: attempt.custom_answers || {},
+        recommendedCareers: attempt.scores || [],
+        careerScores: attempt.scores || [],
+        quizCompleted: true,
+        isMinimalData: false
+      }),
 
       setGalaxyFilter: (galaxyFilter) => set({ galaxyFilter }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),

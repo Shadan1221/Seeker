@@ -11,7 +11,8 @@ export function useAuth() {
     setProfile, 
     setAuthLoading, 
     clearAuth, 
-    fullReset 
+    fullReset,
+    setFromAttempt
   } = useAppStore()
 
   useEffect(() => {
@@ -21,9 +22,10 @@ export function useAuth() {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           setUser(session.user)
-          const [profileRes, bookmarksRes] = await Promise.all([
+          const [profileRes, bookmarksRes, quizRes] = await Promise.all([
             supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id)
+            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id),
+            supabase.from('quiz_attempts').select('*').eq('user_id', session.user.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
           ])
           if (profileRes.data) setProfile(profileRes.data)
           if (bookmarksRes.data) {
@@ -31,6 +33,9 @@ export function useAuth() {
             const localBookmarks = useAppStore.getState().bookmarkedCareers
             const merged = [...new Set([...remoteBookmarks, ...localBookmarks])]
             useAppStore.getState().setBookmarkedCareers(merged)
+          }
+          if (quizRes.data) {
+            setFromAttempt(quizRes.data)
           }
         } else {
           setUser(null)
@@ -52,16 +57,21 @@ export function useAuth() {
         if (session?.user) {
           setUser(session.user)
 
-          // Fetch profile and bookmarks in parallel
-          const [profileRes, bookmarksRes] = await Promise.all([
+          // Fetch profile, bookmarks, and quiz in parallel
+          const [profileRes, bookmarksRes, quizRes] = await Promise.all([
             supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id)
+            supabase.from('bookmarks').select('career_id').eq('user_id', session.user.id),
+            supabase.from('quiz_attempts').select('*').eq('user_id', session.user.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
           ])
 
           if (profileRes.data) {
             setProfile(profileRes.data)
           } else {
             setProfile(null)
+          }
+
+          if (quizRes.data) {
+            setFromAttempt(quizRes.data)
           }
 
           if (bookmarksRes.data) {
