@@ -39,7 +39,12 @@ export function useAuth() {
         const [profileRes, bookmarksRes, quizRes] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', sessionUser.id).single(),
           supabase.from('bookmarks').select('career_id').eq('user_id', sessionUser.id),
-          supabase.from('quiz_attempts').select('*').eq('user_id', sessionUser.id).order('taken_at', { ascending: false }).limit(1).maybeSingle()
+          supabase.from('quiz_attempts')
+            .select('answers, custom_answers, skipped_questions, scores, taken_at')
+            .eq('user_id', sessionUser.id)
+            .order('taken_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
         ])
 
         if (!mounted) return

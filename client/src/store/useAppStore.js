@@ -135,6 +135,7 @@ const useAppStore = create(
         profile: profile || null,
         quizAnswers: attempt?.answers || {},
         customAnswers: attempt?.custom_answers || {},
+        skippedQuestions: attempt?.skipped_questions || [],
         recommendedCareers: attempt?.scores || [],
         careerScores: attempt?.scores || [],
         persona: profile?.persona_summary ? {

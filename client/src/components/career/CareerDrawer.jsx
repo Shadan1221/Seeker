@@ -73,14 +73,18 @@ function DrawerChat({ career }) {
   const chatLoading = useAppStore(s => s.chatLoading)
   const clearChat = useAppStore(s => s.clearChat)
   const setContextCareer = useAppStore(s => s.setContextCareer)
+  const authLoading = useAppStore(s => s.authLoading)
 
   // Refresh chat and context when career node changes
   useEffect(() => {
+    // Wait for auth to finish loading before setting context
+    // This ensures quizAnswers are loaded from Supabase first
+    if (authLoading) return
     clearChat()
     if (career) {
       setContextCareer(career)
     }
-  }, [career?.id, clearChat, setContextCareer])
+  }, [career?.id, authLoading, clearChat, setContextCareer])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -93,7 +97,9 @@ function DrawerChat({ career }) {
   const onSubmit = (e) => {
     e.preventDefault()
     if (!text.trim() || chatLoading) return
-    const quizContext = buildQuizContext(career, store)
+    // Read fresh store state at send time, not from stale closure
+    const freshStore = useAppStore.getState()
+    const quizContext = buildQuizContext(career, freshStore)
     sendMessage(text, quizContext)
     setText('')
   }

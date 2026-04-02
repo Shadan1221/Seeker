@@ -35,6 +35,7 @@ export async function interpretCustomAnswer(req, res, next) {
     const result = await interpretAnswerWithAI(questionId, questionText, customAnswer)
     res.json(result)
   } catch (err) {
+    console.error('[interpret-answer] Error:', err.message)
     next(err)
   }
 }

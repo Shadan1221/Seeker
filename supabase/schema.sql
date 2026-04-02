@@ -22,6 +22,9 @@ create table public.quiz_attempts (
   taken_at timestamptz default now()
 );
 
+ALTER TABLE public.quiz_attempts 
+ADD COLUMN IF NOT EXISTS skipped_questions jsonb DEFAULT '[]'::jsonb;
+
 -- Bookmarks table
 create table public.bookmarks (
   id uuid default gen_random_uuid() primary key,

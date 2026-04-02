@@ -63,6 +63,7 @@
   app.use(errorHandler)
 
   app.listen(config.port, () => {
-    console.log(`Seeker server running on port ${config.port}`)
+    console.log(`Seeker server v2 running on port ${config.port}`)
     console.log(`Environment: ${config.nodeEnv}`)
+    console.log(`Routes: /api/quiz/interpret-answer is registered`)
   })

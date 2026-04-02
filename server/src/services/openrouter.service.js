@@ -53,29 +53,37 @@ Use this context to give personalised, relevant answers. Reference their quiz si
 }
 
 async function callGroq(model, messages) {
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.groqApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 1024,
-      temperature: 0.7,
-    }),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 25000) // 25 second timeout
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`Groq API error: ${error.error?.message || response.statusText}`)
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.groqApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.7,
+      }),
+      signal: controller.signal
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(`Groq API error: ${error.error?.message || response.statusText}`)
+    }
+
+    const data = await response.json()
+    const reply = data?.choices?.[0]?.message?.content
+    if (!reply) throw new Error('Empty response from Groq')
+    return reply
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const data = await response.json()
-  const reply = data?.choices?.[0]?.message?.content
-  if (!reply) throw new Error('Empty response from Groq')
-  return reply
 }
 
 export async function getChatResponse({ messages, systemPrompt }) {

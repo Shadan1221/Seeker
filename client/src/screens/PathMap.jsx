@@ -94,9 +94,26 @@ export default function PathMap() {
   const [isDragging, setIsDragging] = useState(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const svgRef = useRef(null)
+  const mapContainerRef = useRef(null)
+  const compareInFlight = useRef(false)
 
-  const handleZoom = (delta) => setZoom(prev => Math.min(Math.max(prev + delta, 0.4), 3))
-  const onWheel = (e) => { e.preventDefault(); handleZoom(e.deltaY > 0 ? -0.1 : 0.1); }
+  const handleZoom = useCallback((delta) => {
+    setZoom(prev => Math.min(Math.max(prev + delta, 0.4), 3))
+  }, [])
+
+  useEffect(() => {
+    const container = mapContainerRef.current
+    if (!container) return
+
+    const handleWheel = (e) => {
+      e.preventDefault()
+      handleZoom(e.deltaY > 0 ? -0.1 : 0.1)
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [handleZoom])
+
   const startPan = (e) => { if (e.button !== 0) return; setIsDragging(true); dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }; }
   const onPan = (e) => { if (!isDragging) return; setPan({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }); }
   const endPan = () => setIsDragging(false)
@@ -104,15 +121,19 @@ export default function PathMap() {
 
   const handleRunComparison = async () => {
     if (compareSelections.length !== 2) return
+    if (compareInFlight.current) return  // Prevent double-fire
+    
+    compareInFlight.current = true
     setCompareLoading(true)
     try {
       const result = await compareCareers(compareSelections[0], compareSelections[1])
       setCompareResult(result)
     } catch (err) {
-      console.error(err)
-      toast.error('Could not generate comparison. Please try again.')
+      console.error('[compare]', err)
+      toast.error('Could not generate comparison. Please try again.', { id: 'compare-error' })
     } finally {
       setCompareLoading(false)
+      compareInFlight.current = false
     }
   }
 
@@ -259,9 +280,9 @@ export default function PathMap() {
       </div>
 
       <div 
+        ref={mapContainerRef}
         className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing" 
         style={{ pointerEvents: (selectedCareer || compareResult) ? 'none' : 'auto' }}
-        onWheel={onWheel}
         onMouseDown={startPan}
         onMouseMove={onPan}
         onMouseUp={endPan}
@@ -543,11 +564,20 @@ export default function PathMap() {
               {compareSelections.length === 2 && (
                 <button
                   onClick={handleRunComparison}
-                  disabled={compareLoading}
+                  disabled={compareLoading || compareSelections.length !== 2}
                   className="bg-accent text-white text-sm font-bold px-6 py-2.5 rounded-xl
-                             hover:bg-[#D44E25] transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                             hover:bg-[#D44E25] transition-all shadow-lg active:scale-95 
+                             disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
-                  {compareLoading ? 'Comparing...' : 'Compare →'}
+                  {compareLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      Comparing...
+                    </span>
+                  ) : 'Compare →'}
                 </button>
               )}
 
