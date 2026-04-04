@@ -206,6 +206,7 @@ export default function Quiz() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -20, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
+              data-tour="quiz-question"
               className="max-w-5xl w-full mx-auto"
             >
                <div className="mb-4 md:mb-6 mt-2">

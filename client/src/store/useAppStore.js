@@ -36,6 +36,14 @@ const useAppStore = create(
       bookmarksOpen: false,
       compareIds: [], 
 
+      // Tour state
+      isNewUser: false,
+      tourStep: null,
+      tourDismissed: false,
+      pathsExploredCount: 0,
+      chatMessagesSent: 0,
+      compareUsed: false,
+
       // Compare feature state
       compareMode: false,
       compareSelections: [],        
@@ -85,6 +93,15 @@ const useAppStore = create(
         careerScores: [],
         persona: null
       }),
+
+      // Tour Actions
+      setIsNewUser: (val) => set({ isNewUser: val }),
+      setTourStep: (step) => set({ tourStep: step }),
+      dismissTour: () => set({ tourDismissed: true, tourStep: null }),
+      completeTour: () => set({ tourStep: 'complete', isNewUser: false }),
+      incrementPathsExplored: () => set(s => ({ pathsExploredCount: s.pathsExploredCount + 1 })),
+      incrementChatMessages: () => set(s => ({ chatMessagesSent: s.chatMessagesSent + 1 })),
+      setCompareUsed: () => set({ compareUsed: true }),
 
       // Compare Actions
       enterCompareMode: () => set({ compareMode: true, compareSelections: [], compareResult: null }),
@@ -170,7 +187,10 @@ const useAppStore = create(
       setGalaxyFilter: (galaxyFilter) => set({ galaxyFilter }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
-      setSelectedCareer: (selectedCareer) => set({ selectedCareer }),
+      setSelectedCareer: (selectedCareer) => {
+        if (get().tourStep === 3) get().incrementPathsExplored()
+        set({ selectedCareer })
+      },
       clearSelectedCareer: () => set({ selectedCareer: null }),
       visitCareer: (id) => set((s) => ({ visitedCareers: [...new Set([...s.visitedCareers, id])] })),
       completeQuiz: () => set({ quizCompleted: true }),
@@ -210,6 +230,12 @@ const useAppStore = create(
         selectedStream: s.selectedStream,
         user: s.user,
         profile: s.profile,
+        isNewUser: s.isNewUser,
+        tourStep: s.tourStep,
+        tourDismissed: s.tourDismissed,
+        pathsExploredCount: s.pathsExploredCount,
+        chatMessagesSent: s.chatMessagesSent,
+        compareUsed: s.compareUsed,
       }),
     }
   )

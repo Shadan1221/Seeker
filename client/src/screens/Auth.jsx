@@ -260,6 +260,9 @@ export default function Auth() {
       setError(error.message)
       setFormLoading(false)
     } else {
+      // Tour: mark as new user for onboarding tour (sign-up flow only)
+      useAppStore.getState().setIsNewUser(true)
+      useAppStore.getState().setTourStep(0)
       setWelcomeMode(true)
       setTimeout(() => {
         navigate('/welcome')

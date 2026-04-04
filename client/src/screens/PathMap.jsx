@@ -128,6 +128,8 @@ export default function PathMap() {
     try {
       const result = await compareCareers(compareSelections[0], compareSelections[1])
       setCompareResult(result)
+      // Tour: mark compare as used
+      useAppStore.getState().setCompareUsed(true)
     } catch (err) {
       console.error('[compare]', err)
       toast.error('Could not generate comparison. Please try again.', { id: 'compare-error' })
@@ -263,6 +265,7 @@ export default function PathMap() {
          </div>
 
          <button
+            data-tour="compare-button"
             onClick={enterCompareMode}
             className="flex items-center gap-2 text-sm font-medium text-ink-60
                        border border-ink-10 bg-paper/80 backdrop-blur-md px-4 py-2.5 rounded-xl
@@ -273,7 +276,7 @@ export default function PathMap() {
           </button>
       </div>
 
-      <div className="absolute bottom-10 left-8 z-30 flex flex-col gap-2">
+      <div data-tour="zoom-controls" className="absolute bottom-10 left-8 z-30 flex flex-col gap-2">
          <button onClick={() => handleZoom(0.2)} className="w-12 h-12 bg-ink text-paper rounded-full flex items-center justify-center shadow-xl hover:bg-accent"><Icon name="add" size={24} /></button>
          <button onClick={() => handleZoom(-0.2)} className="w-12 h-12 bg-ink text-paper rounded-full flex items-center justify-center shadow-xl hover:bg-accent"><Icon name="remove" size={24} /></button>
          <button onClick={resetView} className="w-12 h-12 bg-surface text-ink rounded-full flex items-center justify-center shadow-lg border border-ink-10"><Icon name="center_focus_strong" size={20} /></button>
@@ -281,6 +284,7 @@ export default function PathMap() {
 
       <div 
         ref={mapContainerRef}
+        data-tour="path-map-area"
         className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing" 
         style={{ pointerEvents: (selectedCareer || compareResult) ? 'none' : 'auto' }}
         onMouseDown={startPan}

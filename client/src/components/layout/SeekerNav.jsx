@@ -93,6 +93,7 @@ export default function SeekerNav() {
             )}
 
             <button
+              data-tour="ask-seeker-nav"
               onClick={() => navigate('/chat')}
               className={`text-sm font-medium tracking-wide hover-underline ${isActive('/chat') ? 'text-accent' : 'text-ink-60'}`}
             >
@@ -100,6 +101,7 @@ export default function SeekerNav() {
             </button>
 
             <button
+              data-tour="feedback-nav"
               onClick={() => navigate('/feedback')}
               className={`text-sm font-medium tracking-wide hover-underline ${isActive('/feedback') ? 'text-accent' : 'text-ink-60'}`}
             >

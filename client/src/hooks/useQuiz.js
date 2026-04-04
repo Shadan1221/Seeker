@@ -1,9 +1,21 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { quizApi } from '../api/quizApi.js'
 import useAppStore from '../store/useAppStore.js'
+import { QUIZ } from '../data/quiz.js'
 
 export function useQuizQuestions() {
-  return useQuery({ queryKey: ['quiz'], queryFn: quizApi.getQuestions, staleTime: Infinity })
+  return useQuery({
+    queryKey: ['quiz'],
+    queryFn: async () => {
+      try {
+        return await quizApi.getQuestions()
+      } catch {
+        // Fallback to local quiz data if API is unavailable
+        return { quiz: QUIZ }
+      }
+    },
+    staleTime: Infinity,
+  })
 }
 
 export function useScoreQuiz() {

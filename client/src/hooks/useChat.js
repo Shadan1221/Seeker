@@ -17,6 +17,10 @@ export function useChat() {
     onMutate: ({ userMessage }) => {
       addMessage({ role: 'user', content: userMessage, timestamp: Date.now() })
       setChatLoading(true)
+      // Tour: track messages sent during step 4
+      if (useAppStore.getState().tourStep === 4) {
+        useAppStore.getState().incrementChatMessages()
+      }
     },
     onSuccess: (data) => addMessage(data),
     onError: (error) => toast.error(error?.message || 'Could not reach Path AI.'),  

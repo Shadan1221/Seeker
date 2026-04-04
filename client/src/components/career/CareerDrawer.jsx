@@ -258,6 +258,7 @@ export default function CareerDrawer({ career }) {
                 <button 
                   key={t}
                   onClick={() => setDrawerTab(t)}
+                  {...(t === 'Chat' ? { 'data-tour': 'drawer-chat-tab' } : {})}
                   className={`pb-4 text-sm font-bold tracking-widest uppercase relative whitespace-nowrap transition-colors ${activeTab === t ? 'text-ink' : 'text-ink-30 hover:text-ink-60'}`}
                 >
                   {t}

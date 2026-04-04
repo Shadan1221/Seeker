@@ -189,7 +189,7 @@ export default function Splash() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-8 relative z-30">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="group relative bg-ink p-[1px] rounded-2xl overflow-hidden shadow-2xl hover:shadow-accent/20 transition-all duration-500">
-                <button onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
+                <button data-tour="start-discovery" onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
                   <span className="opacity-90 group-hover:opacity-100">Start Discovery</span>
                   <span className="ml-2 group-hover:translate-x-2 transition-transform duration-300"><Icon name="arrow_forward" size={20} /></span>
                 </button>

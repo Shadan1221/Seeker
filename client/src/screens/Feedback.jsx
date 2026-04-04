@@ -90,6 +90,10 @@ export default function Feedback() {
     }
 
     toast.success('Thanks for sharing your feedback with Seeker!')
+    // Tour: complete tour if on step 6
+    if (useAppStore.getState().tourStep === 6) {
+      useAppStore.getState().completeTour()
+    }
     setRating(0)
     setCategory(CATEGORY_OPTIONS[0])
     setMessage('')
