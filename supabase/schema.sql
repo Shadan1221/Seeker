@@ -22,6 +22,9 @@ create table public.quiz_attempts (
   taken_at timestamptz default now()
 );
 
+ALTER TABLE public.quiz_attempts 
+ADD COLUMN IF NOT EXISTS skipped_questions jsonb DEFAULT '[]'::jsonb;
+
 -- Bookmarks table
 create table public.bookmarks (
   id uuid default gen_random_uuid() primary key,
@@ -83,3 +86,29 @@ $$ language plpgsql;
 create trigger profiles_updated_at
   before update on public.profiles
   for each row execute function update_updated_at();
+
+-- Feedback table
+create table if not exists public.feedback_entries (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  username_snapshot text,
+  email_snapshot text,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  category text not null,
+  message text not null,
+  improvement text,
+  recommend boolean default true,
+  created_at timestamptz default now()
+);
+
+alter table public.feedback_entries enable row level security;
+
+drop policy if exists "Users can view own feedback" on public.feedback_entries;
+create policy "Users can view own feedback"
+  on public.feedback_entries for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own feedback" on public.feedback_entries;
+create policy "Users can insert own feedback"
+  on public.feedback_entries for insert
+  with check (auth.uid() = user_id);

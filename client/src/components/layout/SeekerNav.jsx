@@ -93,10 +93,19 @@ export default function SeekerNav() {
             )}
 
             <button
+              data-tour="ask-seeker-nav"
               onClick={() => navigate('/chat')}
               className={`text-sm font-medium tracking-wide hover-underline ${isActive('/chat') ? 'text-accent' : 'text-ink-60'}`}
             >
               Ask Seeker
+            </button>
+
+            <button
+              data-tour="feedback-nav"
+              onClick={() => navigate('/feedback')}
+              className={`text-sm font-medium tracking-wide hover-underline ${isActive('/feedback') ? 'text-accent' : 'text-ink-60'}`}
+            >
+              Feedback
             </button>
             
             <button
@@ -150,6 +159,13 @@ export default function SeekerNav() {
                       >
                         <Icon name="account_circle" className="!text-lg" />
                         Profile
+                      </button>
+                      <button
+                        onClick={() => { navigate('/feedback'); setUserDropdownOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink-60 hover:bg-surface hover:text-ink transition-colors flex items-center gap-2"
+                      >
+                        <Icon name="rate_review" className="!text-lg" />
+                        Feedback
                       </button>
                     </div>
 

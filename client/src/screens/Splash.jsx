@@ -5,6 +5,7 @@ import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import SeekerNav from '../components/layout/SeekerNav.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import useAppStore from '../store/useAppStore'
 
 const quotes = [
   { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
@@ -12,6 +13,23 @@ const quotes = [
   { text: "Every path you haven't taken is still yours to explore.", author: "Seeker" },
   { text: "Find a job you enjoy, and you will never have to work a day in your life.", author: "Confucius" },
   { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" }
+]
+
+const developers = [
+  {
+    name: 'Ahmad Shadan Taiyabi',
+    linkedin: 'https://www.linkedin.com/in/shadan-taiyabi/',
+    photo: 'https://ui-avatars.com/api/?name=Ahmad+Shadan+Taiyabi&background=0D0D0D&color=F8F6F1&size=256&bold=true',
+    writeup:
+      'Focused on product architecture, decision systems, and turning complex career choices into a guided and human-first experience.',
+  },
+  {
+    name: 'Abhyam Mathur',
+    linkedin: 'https://www.linkedin.com/in/abhyam-mathur-188a74319/',
+    photo: 'https://ui-avatars.com/api/?name=Abhyam+Mathur&background=E8572A&color=F8F6F1&size=256&bold=true',
+    writeup:
+      'Focused on interface craft, interaction quality, and building an experience that makes exploration feel clear, modern, and actionable.',
+  },
 ]
 
 export default function Splash() {
@@ -171,7 +189,7 @@ export default function Splash() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-8 relative z-30">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="group relative bg-ink p-[1px] rounded-2xl overflow-hidden shadow-2xl hover:shadow-accent/20 transition-all duration-500">
-                <button onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
+                <button data-tour="start-discovery" onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
                   <span className="opacity-90 group-hover:opacity-100">Start Discovery</span>
                   <span className="ml-2 group-hover:translate-x-2 transition-transform duration-300"><Icon name="arrow_forward" size={20} /></span>
                 </button>
@@ -222,6 +240,52 @@ export default function Splash() {
               variant={feature.variant}
             />
           ))}
+        </div>
+      </section>
+
+      {/* About Developers Section */}
+      <section className="relative py-24 bg-transparent z-20">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto text-center mb-14">
+            <span className="text-[11px] font-black tracking-[0.45em] text-accent uppercase">About Developers</span>
+            <h2 className="mt-4 text-4xl md:text-6xl font-serif text-ink tracking-tight">Built by Ahmad Shadan Taiyabi | Abhyam Mathur</h2>
+            <p className="mt-5 text-ink-60 text-base md:text-lg">Meet the team behind Seeker and connect on LinkedIn.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {developers.map((dev) => (
+              <motion.article
+                key={dev.name}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                className="bg-paper/85 backdrop-blur-md border border-ink-10 rounded-[2rem] p-7 md:p-8 shadow-sm"
+              >
+                <div className="flex items-center gap-5 mb-5">
+                  <a href={dev.linkedin} target="_blank" rel="noreferrer" className="block shrink-0">
+                    <img
+                      src={dev.photo}
+                      alt={`${dev.name} profile`}
+                      className="w-20 h-20 rounded-2xl object-cover border border-ink-10"
+                    />
+                  </a>
+                  <div>
+                    <h3 className="font-serif text-2xl text-ink leading-tight">{dev.name}</h3>
+                    <a
+                      href={dev.linkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-2 text-xs font-black tracking-[0.18em] uppercase text-accent hover:opacity-80"
+                    >
+                      LinkedIn Profile <Icon name="open_in_new" size={14} />
+                    </a>
+                  </div>
+                </div>
+
+                <p className="text-ink-60 leading-relaxed text-sm md:text-base">{dev.writeup}</p>
+              </motion.article>
+            ))}
+          </div>
         </div>
       </section>
 

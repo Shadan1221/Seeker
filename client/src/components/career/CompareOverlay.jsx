@@ -49,7 +49,7 @@ export default function CompareOverlay() {
           </div>
 
           {/* ── Main comparison grid ──────────────────────────── */}
-          <div className="max-w-4xl mx-auto px-8 pb-10">
+          <div className="max-w-4xl mx-auto px-8 pb-24">
 
             {/* Career headers */}
             <div className="grid grid-cols-2 gap-6 mb-8">
@@ -222,11 +222,11 @@ export default function CompareOverlay() {
             </div>
 
             {/* CTAs */}
-            <div className="flex items-center gap-4">
+            <div className="sticky bottom-0 flex items-center gap-4 bg-paper/90 backdrop-blur-sm p-6 rounded-2xl border border-ink-10 -mx-8 px-8 mb-8">
               <button
                 onClick={handleClose}
                 className="flex items-center gap-2 text-sm font-medium text-ink-60
-                           border border-ink-10 px-5 py-3 rounded-xl hover:border-ink-30"
+                           border border-ink-10 px-6 py-3 rounded-xl hover:border-ink-30 hover:text-ink transition-colors"
               >
                 ← Back to Map
               </button>
@@ -237,7 +237,7 @@ export default function CompareOverlay() {
                   window.location.href = `/chat?compare=${compareResult.careerA.id},${compareResult.careerB.id}`
                 }}
                 className="flex items-center gap-2 text-sm font-medium bg-accent text-white
-                           px-5 py-3 rounded-xl hover:bg-[#D44E25]"
+                           px-6 py-3 rounded-xl hover:bg-[#D44E25] transition-colors ml-auto"
               >
                 Discuss this with Ask Seeker →
               </button>

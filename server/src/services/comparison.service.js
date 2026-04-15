@@ -123,19 +123,19 @@ Give an honest, India-specific comparison that helps a student understand the re
     // Strip any markdown fences before parsing
     const clean = raw.replace(/```json|```/g, '').trim()
     return JSON.parse(clean)
-  } catch {
-    // Return a safe fallback if AI fails
+  } catch (err) {
+    console.error('[comparison.service] AI explanation failed, using fallback:', err.message)
     return {
-      summary: `Both ${careerA.title} and ${careerB.title} are strong career paths in India with different trade-offs worth understanding.`,
+      summary: `Both ${careerA?.title || 'Path A'} and ${careerB?.title || 'Path B'} are strong career paths in India with different trade-offs worth understanding.`,
       pathA: {
-        bestFor: `Students drawn to ${careerA.category} who are comfortable with ${careerA.hurdles?.overall_difficulty?.toLowerCase() || 'moderate'} challenge`,
-        strongestAdvantage: careerA.scope || 'Strong long-term prospects',
-        biggestRisk: careerA.hurdles?.items?.[0]?.title || 'Requires sustained commitment'
+        bestFor: `Students drawn to ${careerA?.category || 'this field'} who are comfortable with sustained commitment`,
+        strongestAdvantage: careerA?.scope || 'Strong long-term prospects in India',
+        biggestRisk: careerA?.hurdles?.items?.[0]?.title || 'Requires sustained commitment over several years'
       },
       pathB: {
-        bestFor: `Students drawn to ${careerB.category} who are comfortable with ${careerB.hurdles?.overall_difficulty?.toLowerCase() || 'moderate'} challenge`,
-        strongestAdvantage: careerB.scope || 'Strong long-term prospects',
-        biggestRisk: careerB.hurdles?.items?.[0]?.title || 'Requires sustained commitment'
+        bestFor: `Students drawn to ${careerB?.category || 'this field'} who are comfortable with sustained commitment`,
+        strongestAdvantage: careerB?.scope || 'Strong long-term prospects in India',
+        biggestRisk: careerB?.hurdles?.items?.[0]?.title || 'Requires sustained commitment over several years'
       },
       verdict: 'Both paths reward commitment and have strong demand in India. The right choice depends on your natural inclinations, not just the salary figures.',
       reflectionQuestion: 'Which of these two paths would you choose if both paid exactly the same salary?'

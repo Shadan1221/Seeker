@@ -11,13 +11,13 @@ const useAppStore = create(
       authLoading: true,
 
       quizAnswers: {},
-      skippedQuestions: [],   // array of question IDs that were skipped
-      customAnswers: {},      // { [questionId]: { text, tags, interpretation } }
+      skippedQuestions: [],   
+      customAnswers: {},      
       currentQuestion: 1,
       quizCompleted: false,
       recommendedCareers: [],
       careerScores: [],
-      persona: null,          // { summary, traits, interests }
+      persona: null,          
       isMinimalData: false,
 
       galaxyFilter: 'recommended',
@@ -34,12 +34,20 @@ const useAppStore = create(
       contextCareer: null,
       selectedStream: null,
       bookmarksOpen: false,
-      compareIds: [], // Restore existing field
+      compareIds: [], 
+
+      // Tour state
+      isNewUser: false,
+      tourStep: null,
+      tourDismissed: false,
+      pathsExploredCount: 0,
+      chatMessagesSent: 0,
+      compareUsed: false,
 
       // Compare feature state
       compareMode: false,
-      compareSelections: [],        // array of career IDs, max 2
-      compareResult: null,          // the generated comparison object
+      compareSelections: [],        
+      compareResult: null,          
       compareLoading: false,
 
       // Auth Actions
@@ -48,7 +56,6 @@ const useAppStore = create(
       setAuthLoading: (loading) => set({ authLoading: loading }),
       clearAuth: () => set({ user: null, profile: null }),
       fullReset: () => {
-        const { authLoading } = get()
         set({
           quizAnswers: {},
           skippedQuestions: [],
@@ -71,9 +78,30 @@ const useAppStore = create(
           compareLoading: false,
           user: null,
           profile: null,
-          authLoading: authLoading // Preserve authLoading state
+          authLoading: false
         })
       },
+
+      // Retake Action
+      resetQuizForRetake: () => set({
+        quizAnswers: {},
+        skippedQuestions: [],
+        customAnswers: {},
+        currentQuestion: 1,
+        quizCompleted: false,
+        recommendedCareers: [],
+        careerScores: [],
+        persona: null
+      }),
+
+      // Tour Actions
+      setIsNewUser: (val) => set({ isNewUser: val }),
+      setTourStep: (step) => set({ tourStep: step }),
+      dismissTour: () => set({ tourDismissed: true, tourStep: null }),
+      completeTour: () => set({ tourStep: 'complete', isNewUser: false }),
+      incrementPathsExplored: () => set(s => ({ pathsExploredCount: s.pathsExploredCount + 1 })),
+      incrementChatMessages: () => set(s => ({ chatMessagesSent: s.chatMessagesSent + 1 })),
+      setCompareUsed: () => set({ compareUsed: true }),
 
       // Compare Actions
       enterCompareMode: () => set({ compareMode: true, compareSelections: [], compareResult: null }),
@@ -84,7 +112,6 @@ const useAppStore = create(
           return { compareSelections: current.filter(id => id !== careerId) }
         }
         if (current.length >= 2) {
-          // Replace the second selection, keep the first
           return { compareSelections: [current[0], careerId] }
         }
         return { compareSelections: [...current, careerId] }
@@ -121,7 +148,8 @@ const useAppStore = create(
       setResults: (recommended, scores, isMinimal = false) => set({ 
         recommendedCareers: recommended, 
         careerScores: scores,
-        isMinimalData: isMinimal
+        isMinimalData: isMinimal,
+        quizCompleted: true
       }),
       setFromAttempt: (attempt) => set({
         quizAnswers: attempt.answers || {},
@@ -131,25 +159,38 @@ const useAppStore = create(
         quizCompleted: true,
         isMinimalData: false
       }),
-      syncAuthData: (profile, attempt) => set({
-        profile: profile || null,
-        quizAnswers: attempt?.answers || {},
-        customAnswers: attempt?.custom_answers || {},
-        recommendedCareers: attempt?.scores || [],
-        careerScores: attempt?.scores || [],
-        persona: profile?.persona_summary ? {
-          summary: profile.persona_summary,
-          traits: profile.personality_traits || []
-        } : null,
-        quizCompleted: !!attempt,
-        isMinimalData: false,
-        authLoading: false
+      syncAuthData: (profile, attempt) => set((state) => {
+        // If we have local results, we don't overwrite them with DB results 
+        // because the user might have just finished a quiz and the DB is still syncing.
+        const hasLocalResults = state.recommendedCareers && state.recommendedCareers.length > 0
+        const hasDBResults = attempt?.scores && attempt.scores.length > 0
+
+        // We only pull from DB if local is empty
+        const shouldPullFromDB = !hasLocalResults && hasDBResults
+
+        return {
+          profile: profile || state.profile,
+          quizAnswers: shouldPullFromDB ? (attempt.answers || {}) : state.quizAnswers,
+          customAnswers: shouldPullFromDB ? (attempt.custom_answers || {}) : state.customAnswers,
+          skippedQuestions: shouldPullFromDB ? (attempt.skipped_questions || []) : state.skippedQuestions,
+          recommendedCareers: shouldPullFromDB ? attempt.scores : state.recommendedCareers,
+          careerScores: shouldPullFromDB ? attempt.scores : state.careerScores,
+          persona: (profile?.persona_summary) ? {
+            summary: profile.persona_summary,
+            traits: profile.personality_traits || []
+          } : state.persona,
+          quizCompleted: state.quizCompleted || !!attempt,
+          authLoading: false
+        }
       }),
 
       setGalaxyFilter: (galaxyFilter) => set({ galaxyFilter }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
-      setSelectedCareer: (selectedCareer) => set({ selectedCareer }),
+      setSelectedCareer: (selectedCareer) => {
+        if (get().tourStep === 3) get().incrementPathsExplored()
+        set({ selectedCareer })
+      },
       clearSelectedCareer: () => set({ selectedCareer: null }),
       visitCareer: (id) => set((s) => ({ visitedCareers: [...new Set([...s.visitedCareers, id])] })),
       completeQuiz: () => set({ quizCompleted: true }),
@@ -159,36 +200,20 @@ const useAppStore = create(
         const { user, bookmarkedCareers } = get()
         const isBookmarked = bookmarkedCareers.includes(id)
         const previous = bookmarkedCareers
-        
-        // Optimistic update
-        set({ 
-          bookmarkedCareers: isBookmarked 
-            ? bookmarkedCareers.filter((b) => b !== id) 
-            : [...bookmarkedCareers, id] 
-        })
-
+        set({ bookmarkedCareers: isBookmarked ? bookmarkedCareers.filter((b) => b !== id) : [...bookmarkedCareers, id] })
         if (user) {
           try {
-            if (isBookmarked) {
-              await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('career_id', id)
-            } else {
-              await supabase.from('bookmarks').insert({ user_id: user.id, career_id: id })
-            }
-          } catch (err) {
-            // Keep UI state truthful if remote persistence fails.
-            set({ bookmarkedCareers: previous })
-          }
+            if (isBookmarked) await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('career_id', id)
+            else await supabase.from('bookmarks').insert({ user_id: user.id, career_id: id })
+          } catch (err) { set({ bookmarkedCareers: previous }) }
         }
       },
       setBookmarksOpen: (bookmarksOpen) => set({ bookmarksOpen }),
-
       setCompareIds: (compareIds) => set({ compareIds }),
-
       addMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
       setChatLoading: (chatLoading) => set({ chatLoading }),
       setContextCareer: (contextCareer) => set({ contextCareer }),
       clearChat: () => set({ chatMessages: [], contextCareer: null }),
-
       setSelectedStream: (selectedStream) => set({ selectedStream }),
     }),
     {
@@ -205,6 +230,12 @@ const useAppStore = create(
         selectedStream: s.selectedStream,
         user: s.user,
         profile: s.profile,
+        isNewUser: s.isNewUser,
+        tourStep: s.tourStep,
+        tourDismissed: s.tourDismissed,
+        pathsExploredCount: s.pathsExploredCount,
+        chatMessagesSent: s.chatMessagesSent,
+        compareUsed: s.compareUsed,
       }),
     }
   )
