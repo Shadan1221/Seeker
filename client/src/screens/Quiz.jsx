@@ -121,14 +121,14 @@ export default function Quiz() {
   const progressFormat = String(currentIndex + 1).padStart(2, '0')
 
   return (
-    <div className="h-screen bg-paper flex flex-col md:flex-row overflow-hidden font-sans relative">
+    <div className="min-h-screen bg-paper flex flex-col md:flex-row font-sans relative">
       {/* Visual Depth - Subtle Color Wash */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-gradient-to-tr from-accent via-transparent to-blue-500" />
       
       <FloatingPaths />
       
       {/* LEFT PANEL */}
-      <div className="w-full md:w-[35%] p-6 md:p-12 flex flex-col justify-between z-10 border-r border-ink-5">
+      <div className="w-full md:w-[35%] p-6 md:p-12 flex flex-col justify-between z-10 border-b md:border-b-0 md:border-r border-ink-5 md:sticky md:top-0 md:h-screen">
         <div className="flex flex-col h-full justify-between">
           <div>
             <button 

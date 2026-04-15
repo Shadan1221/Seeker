@@ -50,7 +50,7 @@ const TOUR_STEPS = [
   },
   {
     id: 4,
-    screen: null,
+    screen: '/paths',
     target: 'ask-seeker-nav',
     position: 'near-element',
     title: 'Still have questions?',

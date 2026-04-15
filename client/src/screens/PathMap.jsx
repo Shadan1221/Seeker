@@ -11,6 +11,7 @@ import FloatingPaths from '../components/layout/FloatingPaths.jsx'
 import CareerDrawer from '../components/career/CareerDrawer.jsx'
 import CompareOverlay from '../components/career/CompareOverlay.jsx'
 import Icon from '../components/ui/Icon.jsx'
+import SageAvatar from '../components/tour/SageAvatar.jsx'
 
 // SPACIOUS TREE: Clusters spread wide to prevent inter-cluster overlap
 const CLUSTER_NODES = [
@@ -596,6 +597,25 @@ export default function PathMap() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating Ask Seeker Button (Diksha style) */}
+      <motion.button
+        data-tour="ask-seeker-nav"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => navigate('/chat')}
+        className="fixed bottom-10 right-8 z-[60] flex items-center gap-3 bg-paper border border-ink-10 p-2 pr-6 rounded-full shadow-2xl hover:border-accent transition-colors"
+      >
+        <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center border border-ink-5 overflow-hidden">
+          <SageAvatar size={44} />
+        </div>
+        <div className="flex flex-col items-start leading-none">
+          <span className="text-[10px] font-black tracking-widest uppercase text-ink-30">Counsellor</span>
+          <span className="text-sm font-bold text-ink tracking-tight">Ask Seeker</span>
+        </div>
+      </motion.button>
     </div>
   )
 }
