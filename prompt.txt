@@ -1,0 +1,1264 @@
+# SEEKER — Career Intelligence Data Pipeline
+
+## Project Context
+
+Seeker is a career exploration platform at pathseeker.app for Indian students.
+
+Current stack:
+- Frontend: React 18 + Vite on Netlify
+- Backend: Node.js + Express on Render (`server/` directory)
+- Database + Auth: Supabase (PostgreSQL)
+- AI: Groq API via `server/src/services/openrouter.service.js`
+- Repo structure: monorepo with `client/`, `server/`, `supabase/` directories
+
+Current career data is hardcoded in `server/src/data/careers.js` and
+`server/src/data/colleges.js` as static JavaScript objects. This entire task
+is about replacing that static data with a live, continuously updated
+intelligence system — without breaking any existing functionality.
+
+The goal is to make Seeker a real career intelligence tool that serves
+verified, up-to-date data about Indian careers, colleges, exams, and salaries
+to students automatically.
+
+---
+
+## Architecture Overview
+
+```
+Trusted Indian Sources
+        ↓
+Python Data Pipeline (new — runs on GitHub Actions cron)
+        ↓
+Supabase staging schema (raw collected data)
+        ↓
+Validation + AI-assisted cleaning + deduplication
+        ↓
+Supabase production schema (versioned, confidence-scored)
+        ↓
+FastAPI microservice (new — internal only, reads production schema)
+        ↓
+Node.js/Express (proxies FastAPI — frontend never calls FastAPI directly)
+        ↓
+React frontend (existing — API calls unchanged)
+```
+
+FastAPI is an internal microservice. The Node.js backend is the ONLY
+origin the React frontend talks to. Node.js proxies data requests to
+FastAPI. This keeps CORS simple and auth centralised.
+
+---
+
+## Part 1 — Supabase Database Schema
+
+Create a new file `supabase/intelligence_schema.sql`.
+
+This schema is ADDITIVE — it does not touch the existing `profiles`,
+`quiz_attempts`, or `bookmarks` tables.
+
+### 1a. Career Intelligence Table
+
+```sql
+CREATE TABLE public.career_intelligence (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  career_id text NOT NULL,              -- matches id in careers.js e.g. 'software-engineer'
+  data_type text NOT NULL,              -- 'salary' | 'demand' | 'colleges' | 'exams' | 'jobs'
+  source_url text,
+  source_name text NOT NULL,            -- e.g. 'NIRF 2024', 'AmbitionBox', 'LinkedIn India'
+  raw_data jsonb NOT NULL,              -- exactly what was scraped, unmodified
+  processed_data jsonb,                 -- cleaned, structured version
+  confidence_score float DEFAULT 0.8,  -- 0.0 to 1.0
+  is_verified boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  version integer DEFAULT 1,
+  refresh_interval_days integer DEFAULT 90,  -- how often this record should be refreshed
+  last_scraped_at timestamptz DEFAULT now(),
+  next_refresh_at timestamptz DEFAULT now() + interval '90 days',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_career_intelligence_career_id ON public.career_intelligence(career_id);
+CREATE INDEX idx_career_intelligence_data_type ON public.career_intelligence(data_type);
+CREATE INDEX idx_career_intelligence_active ON public.career_intelligence(is_active);
+CREATE INDEX idx_career_intelligence_refresh ON public.career_intelligence(next_refresh_at);
+```
+
+### 1b. College Intelligence Table
+
+```sql
+CREATE TABLE public.college_intelligence (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  college_name text NOT NULL,
+  city text,
+  state text,
+  type text,                             -- 'IIT' | 'NIT' | 'IIM' | 'AIIMS' | 'NLU' | 'Private' | 'Deemed'
+  careers text[] DEFAULT '{}',           -- array of career_ids this college is relevant for
+  nirf_rank integer,
+  nirf_category text,                    -- 'Overall' | 'Engineering' | 'Medical' | 'Management' | 'Law'
+  nirf_year integer,
+  avg_package_lpa float,
+  entrance_exams text[] DEFAULT '{}',
+  website_url text,
+  source_url text,
+  confidence_score float DEFAULT 0.8,
+  is_active boolean DEFAULT true,
+  last_scraped_at timestamptz DEFAULT now(),
+  next_refresh_at timestamptz DEFAULT now() + interval '365 days',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_college_intelligence_careers ON public.college_intelligence USING GIN(careers);
+CREATE INDEX idx_college_intelligence_type ON public.college_intelligence(type);
+```
+
+### 1c. Exam Intelligence Table
+
+```sql
+CREATE TABLE public.exam_intelligence (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  exam_name text NOT NULL,              -- 'JEE Main', 'NEET UG', 'CLAT', 'CAT', 'UPSC CSE'
+  exam_slug text UNIQUE NOT NULL,       -- 'jee-main', 'neet-ug', 'clat', 'cat'
+  conducting_body text,
+  careers text[] DEFAULT '{}',          -- career_ids this exam is relevant for
+  official_url text,
+  notification_url text,
+  exam_date text,                        -- stored as text for flexibility e.g. "January 2026"
+  registration_start text,
+  registration_end text,
+  application_fee_general integer,       -- in INR
+  eligibility_summary text,
+  total_seats integer,
+  syllabus_summary text,
+  last_year_cutoff jsonb,               -- { 'general': score, 'obc': score, 'sc': score }
+  source_url text,
+  confidence_score float DEFAULT 0.8,
+  is_active boolean DEFAULT true,
+  last_scraped_at timestamptz DEFAULT now(),
+  next_refresh_at timestamptz DEFAULT now() + interval '30 days',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+```
+
+### 1d. Salary Intelligence Table
+
+```sql
+CREATE TABLE public.salary_intelligence (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  career_id text NOT NULL,
+  experience_level text NOT NULL,        -- 'fresher' | 'mid' | 'senior'
+  salary_min_lpa float,
+  salary_max_lpa float,
+  salary_median_lpa float,
+  city text DEFAULT 'India',             -- national average or city-specific
+  sector text,                           -- 'private' | 'government' | 'startup' | 'mnc'
+  sample_size integer,                   -- number of data points this is based on
+  source_name text NOT NULL,
+  source_url text,
+  data_year integer,
+  confidence_score float DEFAULT 0.7,
+  is_active boolean DEFAULT true,
+  last_scraped_at timestamptz DEFAULT now(),
+  next_refresh_at timestamptz DEFAULT now() + interval '90 days',
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_salary_intelligence_career ON public.salary_intelligence(career_id);
+```
+
+### 1e. Staging Table (Raw Collected Data)
+
+```sql
+CREATE TABLE public.pipeline_staging (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  source_name text NOT NULL,
+  source_url text NOT NULL,
+  data_type text NOT NULL,
+  raw_html text,
+  raw_json jsonb,
+  parse_status text DEFAULT 'pending',   -- 'pending' | 'processed' | 'failed' | 'skipped'
+  error_message text,
+  created_at timestamptz DEFAULT now(),
+  processed_at timestamptz
+);
+```
+
+### 1f. Pipeline Run Log
+
+```sql
+CREATE TABLE public.pipeline_runs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  run_type text NOT NULL,               -- 'full' | 'incremental' | 'manual'
+  status text DEFAULT 'running',        -- 'running' | 'completed' | 'failed'
+  sources_attempted integer DEFAULT 0,
+  sources_succeeded integer DEFAULT 0,
+  records_inserted integer DEFAULT 0,
+  records_updated integer DEFAULT 0,
+  records_skipped integer DEFAULT 0,
+  error_log jsonb DEFAULT '[]'::jsonb,
+  started_at timestamptz DEFAULT now(),
+  completed_at timestamptz
+);
+```
+
+### 1g. Enable pgvector for Semantic Search
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+ALTER TABLE public.career_intelligence
+ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+CREATE INDEX idx_career_intelligence_embedding
+ON public.career_intelligence
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+### 1h. RLS Policies
+
+```sql
+-- All intelligence tables are READ-only for authenticated users
+-- Only the service role (pipeline) can write
+
+ALTER TABLE public.career_intelligence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.college_intelligence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exam_intelligence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.salary_intelligence ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read active career intelligence"
+  ON public.career_intelligence FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can read active college intelligence"
+  ON public.college_intelligence FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can read active exam intelligence"
+  ON public.exam_intelligence FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can read active salary intelligence"
+  ON public.salary_intelligence FOR SELECT
+  USING (is_active = true);
+
+-- Auto-update updated_at
+CREATE TRIGGER career_intelligence_updated_at
+  BEFORE UPDATE ON public.career_intelligence
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+```
+
+---
+
+## Part 2 — Python Data Pipeline
+
+Create a new top-level directory: `pipeline/`
+
+### Directory Structure
+
+```
+pipeline/
+├── pyproject.toml              — Python project config and dependencies
+├── requirements.txt            — pip installable dependencies
+├── .env.example                — required environment variables (no real values)
+├── README.md                   — how to run the pipeline locally
+│
+├── config/
+│   ├── __init__.py
+│   ├── settings.py             — Pydantic settings model reading from env vars
+│   └── sources.py              — Registry of all trusted data sources
+│
+├── scrapers/
+│   ├── __init__.py
+│   ├── base_scraper.py         — Abstract base class all scrapers inherit from
+│   ├── nirf_scraper.py         — NIRF rankings (nirfindia.org)
+│   ├── nta_scraper.py          — NTA exam dates and info (nta.nic.in)
+│   ├── aicte_scraper.py        — AICTE approved colleges
+│   ├── salary_scraper.py       — AmbitionBox India salary data
+│   └── jobs_scraper.py         — LinkedIn India job posting trends
+│
+├── parsers/
+│   ├── __init__.py
+│   ├── college_parser.py       — Parses college data into schema
+│   ├── exam_parser.py          — Parses exam data into schema
+│   ├── salary_parser.py        — Parses salary data into schema
+│   └── ai_parser.py            — Groq-assisted parsing for unstructured content
+│
+├── validators/
+│   ├── __init__.py
+│   ├── schemas.py              — Pydantic models for all data types
+│   └── deduplicator.py         — Finds and handles duplicate records
+│
+├── database/
+│   ├── __init__.py
+│   ├── client.py               — Supabase client initialisation
+│   └── writer.py               — Upsert logic with versioning
+│
+├── pipeline/
+│   ├── __init__.py
+│   ├── runner.py               — Main pipeline orchestrator
+│   ├── incremental.py          — Only refresh records past next_refresh_at
+│   └── full_refresh.py         — Complete data rebuild
+│
+└── tests/
+    ├── test_nirf_scraper.py
+    ├── test_college_parser.py
+    └── test_validators.py
+```
+
+### 2a. `pipeline/config/settings.py`
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    supabase_url: str
+    supabase_service_role_key: str  # Service role — write access
+    groq_api_key: str
+    pipeline_run_type: str = "incremental"  # 'full' | 'incremental'
+    max_concurrent_scrapers: int = 3
+    request_delay_seconds: float = 2.0  # Be polite to servers
+    playwright_timeout_ms: int = 30000
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
+```
+
+### 2b. `pipeline/config/sources.py`
+
+Define all trusted data sources with their refresh intervals and data types:
+
+```python
+DATA_SOURCES = [
+    {
+        "name": "NIRF Rankings 2024",
+        "url": "https://www.nirfindia.org/Rankings/2024/EngineeringRanking.html",
+        "data_type": "colleges",
+        "scraper": "nirf_scraper",
+        "refresh_interval_days": 365,  # NIRF updates annually
+        "careers": ["software-engineer", "data-scientist", "cybersecurity",
+                    "research-scientist", "game-developer", "architect", "pilot"]
+    },
+    {
+        "name": "NIRF Medical Rankings 2024",
+        "url": "https://www.nirfindia.org/Rankings/2024/MedicalRanking.html",
+        "data_type": "colleges",
+        "scraper": "nirf_scraper",
+        "refresh_interval_days": 365,
+        "careers": ["doctor", "psychologist", "pharmacist"]
+    },
+    {
+        "name": "NIRF Law Rankings 2024",
+        "url": "https://www.nirfindia.org/Rankings/2024/LawRanking.html",
+        "data_type": "colleges",
+        "scraper": "nirf_scraper",
+        "refresh_interval_days": 365,
+        "careers": ["lawyer"]
+    },
+    {
+        "name": "NIRF Management Rankings 2024",
+        "url": "https://www.nirfindia.org/Rankings/2024/ManagementRanking.html",
+        "data_type": "colleges",
+        "scraper": "nirf_scraper",
+        "refresh_interval_days": 365,
+        "careers": ["ca-finance", "entrepreneur", "management-consultant", "product-manager"]
+    },
+    {
+        "name": "NTA JEE Main",
+        "url": "https://jeemain.nta.ac.in/",
+        "data_type": "exams",
+        "scraper": "nta_scraper",
+        "refresh_interval_days": 30,  # Exam dates change frequently
+        "careers": ["software-engineer", "data-scientist", "architect", "pilot"]
+    },
+    {
+        "name": "NTA NEET UG",
+        "url": "https://neet.nta.nic.in/",
+        "data_type": "exams",
+        "scraper": "nta_scraper",
+        "refresh_interval_days": 30,
+        "careers": ["doctor", "pharmacist"]
+    },
+    {
+        "name": "AmbitionBox India Salaries",
+        "url": "https://www.ambitionbox.com/salaries",
+        "data_type": "salary",
+        "scraper": "salary_scraper",
+        "refresh_interval_days": 90,
+        "careers": ["software-engineer", "data-scientist", "product-manager",
+                    "cybersecurity", "graphic-designer", "content-creator"]
+    },
+]
+
+# Tiered refresh strategy
+REFRESH_INTERVALS = {
+    "exam_dates": 30,        # days — changes every admission cycle
+    "salary": 90,            # quarterly — labour market shifts
+    "college_rankings": 365, # annually — NIRF releases once a year
+    "cutoff_scores": 365,    # annually — after each admission season
+    "job_demand": 90,        # quarterly — hiring trends
+}
+```
+
+### 2c. `pipeline/scrapers/base_scraper.py`
+
+```python
+from abc import ABC, abstractmethod
+from playwright.async_api import async_playwright
+import httpx
+import asyncio
+import logging
+from config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+class BaseScraper(ABC):
+    def __init__(self, source_config: dict):
+        self.source = source_config
+        self.delay = settings.request_delay_seconds
+
+    async def fetch_html(self, url: str) -> str | None:
+        """Fetch page HTML using Playwright for JS-rendered pages."""
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                page = await browser.new_page()
+                await page.set_extra_http_headers({
+                    "User-Agent": "Mozilla/5.0 (research bot; career-data-collection)"
+                })
+                await page.goto(url, timeout=settings.playwright_timeout_ms)
+                await page.wait_for_load_state("networkidle")
+                content = await page.content()
+                await browser.close()
+                await asyncio.sleep(self.delay)
+                return content
+        except Exception as e:
+            logger.error(f"Failed to fetch {url}: {e}")
+            return None
+
+    async def fetch_json(self, url: str, params: dict = None) -> dict | None:
+        """Fetch JSON from an API endpoint."""
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, params=params)
+                resp.raise_for_status()
+                await asyncio.sleep(self.delay)
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Failed to fetch JSON from {url}: {e}")
+            return None
+
+    @abstractmethod
+    async def scrape(self) -> list[dict]:
+        """Implement scraping logic. Return list of raw records."""
+        pass
+```
+
+### 2d. `pipeline/scrapers/nirf_scraper.py`
+
+```python
+from bs4 import BeautifulSoup
+from .base_scraper import BaseScraper
+import logging
+import re
+
+logger = logging.getLogger(__name__)
+
+class NIRFScraper(BaseScraper):
+    async def scrape(self) -> list[dict]:
+        html = await self.fetch_html(self.source["url"])
+        if not html:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        results = []
+
+        # NIRF tables have a consistent structure — rank, institute name,
+        # city, state, score. Parse the ranking table.
+        table = soup.find("table", {"id": "tbl_overall"}) or \
+                soup.find("table", class_=re.compile(".*ranking.*", re.I))
+
+        if not table:
+            logger.warning(f"Could not find ranking table at {self.source['url']}")
+            return []
+
+        rows = table.find_all("tr")[1:]  # Skip header row
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) < 3:
+                continue
+            try:
+                rank_text = cols[0].get_text(strip=True)
+                rank = int(re.search(r'\d+', rank_text).group()) if re.search(r'\d+', rank_text) else None
+                name = cols[1].get_text(strip=True)
+                city_state = cols[2].get_text(strip=True) if len(cols) > 2 else ""
+
+                results.append({
+                    "college_name": name,
+                    "nirf_rank": rank,
+                    "location_raw": city_state,
+                    "nirf_category": self.source["name"],
+                    "nirf_year": 2024,
+                    "source_url": self.source["url"],
+                    "source_name": self.source["name"],
+                    "careers": self.source["careers"],
+                })
+            except (ValueError, AttributeError) as e:
+                logger.debug(f"Skipping malformed row: {e}")
+                continue
+
+        logger.info(f"NIRF scraper: extracted {len(results)} colleges from {self.source['name']}")
+        return results
+```
+
+### 2e. `pipeline/validators/schemas.py`
+
+Pydantic models for all data types — strict validation before anything enters the database:
+
+```python
+from pydantic import BaseModel, Field, validator, HttpUrl
+from typing import Optional
+import re
+
+class CollegeRecord(BaseModel):
+    college_name: str = Field(..., min_length=3, max_length=200)
+    city: Optional[str] = None
+    state: Optional[str] = None
+    type: Optional[str] = None
+    careers: list[str] = []
+    nirf_rank: Optional[int] = Field(None, ge=1, le=10000)
+    nirf_category: Optional[str] = None
+    nirf_year: Optional[int] = Field(None, ge=2000, le=2030)
+    avg_package_lpa: Optional[float] = Field(None, ge=0, le=200)
+    entrance_exams: list[str] = []
+    website_url: Optional[str] = None
+    source_url: Optional[str] = None
+    confidence_score: float = Field(0.8, ge=0.0, le=1.0)
+
+    @validator("college_name")
+    def clean_college_name(cls, v):
+        return " ".join(v.split())  # Normalise whitespace
+
+    @validator("careers", each_item=True)
+    def validate_career_id(cls, v):
+        valid_careers = {
+            "software-engineer", "data-scientist", "cybersecurity", "product-manager",
+            "doctor", "psychologist", "research-scientist", "pharmacist", "lawyer",
+            "ca-finance", "entrepreneur", "management-consultant", "graphic-designer",
+            "film-director", "content-creator", "fashion-designer", "ias-officer",
+            "journalist", "social-worker", "teacher-educator", "pilot", "architect",
+            "sports-athlete", "game-developer", "chef-culinary"
+        }
+        if v not in valid_careers:
+            raise ValueError(f"Unknown career_id: {v}")
+        return v
+
+
+class ExamRecord(BaseModel):
+    exam_name: str = Field(..., min_length=2, max_length=100)
+    exam_slug: str
+    conducting_body: Optional[str] = None
+    careers: list[str] = []
+    official_url: Optional[str] = None
+    exam_date: Optional[str] = None
+    registration_start: Optional[str] = None
+    registration_end: Optional[str] = None
+    application_fee_general: Optional[int] = Field(None, ge=0, le=10000)
+    eligibility_summary: Optional[str] = None
+    source_url: Optional[str] = None
+    confidence_score: float = Field(0.8, ge=0.0, le=1.0)
+
+    @validator("exam_slug")
+    def validate_slug(cls, v):
+        if not re.match(r'^[a-z0-9-]+$', v):
+            raise ValueError("exam_slug must be lowercase alphanumeric with hyphens")
+        return v
+
+
+class SalaryRecord(BaseModel):
+    career_id: str
+    experience_level: str = Field(..., pattern="^(fresher|mid|senior)$")
+    salary_min_lpa: Optional[float] = Field(None, ge=0, le=500)
+    salary_max_lpa: Optional[float] = Field(None, ge=0, le=500)
+    salary_median_lpa: Optional[float] = Field(None, ge=0, le=500)
+    city: str = "India"
+    sector: Optional[str] = None
+    sample_size: Optional[int] = Field(None, ge=0)
+    source_name: str
+    source_url: Optional[str] = None
+    data_year: Optional[int] = Field(None, ge=2020, le=2030)
+    confidence_score: float = Field(0.7, ge=0.0, le=1.0)
+```
+
+### 2f. `pipeline/parsers/ai_parser.py`
+
+For unstructured content that rule-based parsing cannot handle cleanly — uses Groq:
+
+```python
+import json
+from groq import Groq
+from config.settings import settings
+
+client = Groq(api_key=settings.groq_api_key)
+
+SYSTEM_PROMPT = """You are a data extraction assistant for an Indian career guidance platform.
+Extract structured information from raw text. Return ONLY valid JSON, no explanation.
+If a field cannot be determined with confidence, use null.
+All salary figures must be in LPA (Lakhs Per Annum).
+All dates must be in ISO format or descriptive text like "January 2026".
+Be conservative — never invent data. Only extract what is explicitly stated."""
+
+async def parse_with_ai(
+    raw_text: str,
+    schema_description: str,
+    example_output: dict
+) -> dict | None:
+    """
+    Use Groq to parse unstructured text into structured data.
+    Only called when rule-based parsing fails.
+    Results are stored so the same content is never parsed twice.
+    """
+    prompt = f"""Extract the following information from this text:
+
+Schema needed: {schema_description}
+
+Example of expected output format:
+{json.dumps(example_output, indent=2)}
+
+Raw text to parse:
+{raw_text[:3000]}  # Limit to 3000 chars to control token cost
+
+Return only the JSON object, no markdown, no explanation."""
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Fast, cheap model for extraction tasks
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.1,  # Low temperature for consistent extraction
+        )
+        raw = response.choices[0].message.content.strip()
+        clean = raw.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean)
+    except Exception as e:
+        return None
+```
+
+### 2g. `pipeline/database/writer.py`
+
+```python
+from supabase import create_client
+from config.settings import settings
+import logging
+from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+supabase = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+async def upsert_college(record: dict, refresh_interval_days: int = 365) -> bool:
+    """
+    Upsert a college record. Uses college_name as the unique key.
+    Increments version on update.
+    """
+    try:
+        # Check if record exists
+        existing = supabase.table("college_intelligence") \
+            .select("id, version") \
+            .eq("college_name", record["college_name"]) \
+            .execute()
+
+        next_refresh = datetime.now() + timedelta(days=refresh_interval_days)
+
+        if existing.data:
+            # Update existing
+            version = existing.data[0]["version"] + 1
+            supabase.table("college_intelligence").update({
+                **record,
+                "version": version,
+                "last_scraped_at": datetime.now().isoformat(),
+                "next_refresh_at": next_refresh.isoformat(),
+            }).eq("id", existing.data[0]["id"]).execute()
+            logger.debug(f"Updated college: {record['college_name']} (v{version})")
+        else:
+            # Insert new
+            supabase.table("college_intelligence").insert({
+                **record,
+                "version": 1,
+                "last_scraped_at": datetime.now().isoformat(),
+                "next_refresh_at": next_refresh.isoformat(),
+            }).execute()
+            logger.debug(f"Inserted college: {record['college_name']}")
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to upsert college {record.get('college_name')}: {e}")
+        return False
+
+
+async def upsert_salary(record: dict) -> bool:
+    """
+    Upsert salary data. Unique key: (career_id, experience_level, sector, city).
+    """
+    try:
+        existing = supabase.table("salary_intelligence") \
+            .select("id") \
+            .eq("career_id", record["career_id"]) \
+            .eq("experience_level", record["experience_level"]) \
+            .eq("sector", record.get("sector", "private")) \
+            .eq("city", record.get("city", "India")) \
+            .execute()
+
+        if existing.data:
+            supabase.table("salary_intelligence").update({
+                **record,
+                "last_scraped_at": datetime.now().isoformat(),
+            }).eq("id", existing.data[0]["id"]).execute()
+        else:
+            supabase.table("salary_intelligence").insert(record).execute()
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to upsert salary: {e}")
+        return False
+```
+
+### 2h. `pipeline/pipeline/runner.py`
+
+The main orchestrator:
+
+```python
+import asyncio
+import logging
+from datetime import datetime
+from config.sources import DATA_SOURCES
+from scrapers.nirf_scraper import NIRFScraper
+from scrapers.nta_scraper import NTAScraper
+from scrapers.salary_scraper import SalaryScraper
+from parsers.college_parser import CollegeParser
+from parsers.exam_parser import ExamParser
+from validators.schemas import CollegeRecord, ExamRecord, SalaryRecord
+from database.writer import upsert_college, upsert_salary
+from database.client import supabase
+import json
+
+logger = logging.getLogger(__name__)
+
+SCRAPER_MAP = {
+    "nirf_scraper": NIRFScraper,
+    "nta_scraper": NTAScraper,
+    "salary_scraper": SalaryScraper,
+}
+
+async def run_pipeline(run_type: str = "incremental"):
+    run_record = supabase.table("pipeline_runs").insert({
+        "run_type": run_type,
+        "status": "running",
+        "started_at": datetime.now().isoformat()
+    }).execute()
+    run_id = run_record.data[0]["id"]
+
+    stats = {"attempted": 0, "succeeded": 0, "inserted": 0, "updated": 0, "errors": []}
+
+    for source in DATA_SOURCES:
+        stats["attempted"] += 1
+        scraper_class = SCRAPER_MAP.get(source["scraper"])
+        if not scraper_class:
+            logger.warning(f"Unknown scraper: {source['scraper']}")
+            continue
+
+        try:
+            scraper = scraper_class(source)
+            raw_records = await scraper.scrape()
+
+            if not raw_records:
+                logger.warning(f"No data from {source['name']}")
+                continue
+
+            # Parse and validate
+            processed = 0
+            for raw in raw_records:
+                try:
+                    if source["data_type"] == "colleges":
+                        from parsers.college_parser import parse_college
+                        parsed = parse_college(raw, source)
+                        validated = CollegeRecord(**parsed)
+                        success = await upsert_college(validated.dict(), source["refresh_interval_days"])
+                    elif source["data_type"] == "exams":
+                        from parsers.exam_parser import parse_exam
+                        parsed = parse_exam(raw, source)
+                        validated = ExamRecord(**parsed)
+                        success = await upsert_exam(validated.dict(), source["refresh_interval_days"])
+                    elif source["data_type"] == "salary":
+                        from parsers.salary_parser import parse_salary
+                        for salary_record in parse_salary(raw, source):
+                            validated = SalaryRecord(**salary_record)
+                            success = await upsert_salary(validated.dict())
+
+                    if success:
+                        processed += 1
+                except Exception as e:
+                    logger.debug(f"Record validation failed: {e}")
+
+            stats["succeeded"] += 1
+            stats["inserted"] += processed
+            logger.info(f"[{source['name']}] processed {processed}/{len(raw_records)} records")
+
+        except Exception as e:
+            stats["errors"].append({"source": source["name"], "error": str(e)})
+            logger.error(f"Source {source['name']} failed: {e}")
+
+    # Update run record
+    supabase.table("pipeline_runs").update({
+        "status": "completed",
+        "sources_attempted": stats["attempted"],
+        "sources_succeeded": stats["succeeded"],
+        "records_inserted": stats["inserted"],
+        "error_log": json.dumps(stats["errors"]),
+        "completed_at": datetime.now().isoformat()
+    }).eq("id", run_id).execute()
+
+    logger.info(f"Pipeline complete: {stats}")
+    return stats
+
+
+if __name__ == "__main__":
+    asyncio.run(run_pipeline())
+```
+
+### 2i. `pipeline/requirements.txt`
+
+```
+playwright==1.44.0
+httpx==0.27.0
+beautifulsoup4==4.12.3
+pydantic==2.7.1
+pydantic-settings==2.3.0
+groq==0.9.0
+supabase==2.4.3
+python-dotenv==1.0.1
+lxml==5.2.2
+```
+
+### 2j. `pipeline/.env.example`
+
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+GROQ_API_KEY=your-groq-api-key-here
+PIPELINE_RUN_TYPE=incremental
+```
+
+---
+
+## Part 3 — GitHub Actions Scheduler
+
+Create `.github/workflows/data-pipeline.yml`:
+
+```yaml
+name: Seeker Data Pipeline
+
+on:
+  schedule:
+    # Run incremental refresh every Monday at 2 AM IST (8:30 PM Sunday UTC)
+    - cron: '30 20 * * 0'
+    # Run salary refresh every 1st of the month at 3 AM IST
+    - cron: '30 21 1 * *'
+  workflow_dispatch:
+    inputs:
+      run_type:
+        description: 'Pipeline run type'
+        required: true
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pipeline/requirements.txt') }}
+
+      - name: Install dependencies
+        working-directory: pipeline
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run pipeline
+        working-directory: pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PIPELINE_RUN_TYPE: ${{ github.event.inputs.run_type || 'incremental' }}
+        run: python pipeline/runner.py
+
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: pipeline/logs/
+          retention-days: 14
+```
+
+Add these secrets to your GitHub repository:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (not the anon key — the service role key for write access)
+- `GROQ_API_KEY`
+
+---
+
+## Part 4 — FastAPI Microservice
+
+Create a new directory: `data-api/`
+
+### Directory Structure
+
+```
+data-api/
+├── main.py                     — FastAPI app entry point
+├── requirements.txt
+├── .env.example
+├── routers/
+│   ├── colleges.py
+│   ├── exams.py
+│   ├── salaries.py
+│   └── careers.py
+└── dependencies.py             — Shared Supabase client
+```
+
+### 4a. `data-api/main.py`
+
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import colleges, exams, salaries, careers
+import os
+
+app = FastAPI(
+    title="Seeker Data API",
+    description="Internal career intelligence microservice",
+    docs_url=None,  # Disable docs in production
+    redoc_url=None,
+)
+
+# Only allow requests from the Node.js backend — not from browsers directly
+ALLOWED_ORIGINS = [
+    "http://localhost:5000",         # Node.js dev
+    "https://seeker-k9jg.onrender.com",  # Node.js production
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET"],
+    allow_headers=["X-Internal-Key"],  # Simple shared secret header
+)
+
+app.include_router(colleges.router, prefix="/colleges")
+app.include_router(exams.router, prefix="/exams")
+app.include_router(salaries.router, prefix="/salaries")
+app.include_router(careers.router, prefix="/careers")
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+```
+
+### 4b. `data-api/routers/colleges.py`
+
+```python
+from fastapi import APIRouter, Query, Depends
+from dependencies import get_supabase
+from typing import Optional
+
+router = APIRouter()
+
+@router.get("/{career_id}")
+async def get_colleges_for_career(
+    career_id: str,
+    limit: int = Query(default=6, le=20),
+    supabase = Depends(get_supabase)
+):
+    """
+    Returns the top colleges for a given career_id.
+    Falls back to static data if no live data is available.
+    """
+    result = supabase.table("college_intelligence") \
+        .select("college_name, city, state, type, nirf_rank, nirf_category, "
+                "nirf_year, avg_package_lpa, entrance_exams, website_url, "
+                "confidence_score, last_scraped_at") \
+        .contains("careers", [career_id]) \
+        .eq("is_active", True) \
+        .order("nirf_rank", nulls_last=True) \
+        .limit(limit) \
+        .execute()
+
+    return {
+        "career_id": career_id,
+        "colleges": result.data,
+        "count": len(result.data),
+        "data_source": "live" if result.data else "none"
+    }
+```
+
+### 4c. `data-api/routers/salaries.py`
+
+```python
+from fastapi import APIRouter, Depends
+from dependencies import get_supabase
+
+router = APIRouter()
+
+@router.get("/{career_id}")
+async def get_salary_for_career(career_id: str, supabase = Depends(get_supabase)):
+    result = supabase.table("salary_intelligence") \
+        .select("experience_level, salary_min_lpa, salary_max_lpa, "
+                "salary_median_lpa, sector, city, source_name, data_year, "
+                "confidence_score, last_scraped_at") \
+        .eq("career_id", career_id) \
+        .eq("is_active", True) \
+        .eq("city", "India") \
+        .order("data_year", desc=True) \
+        .execute()
+
+    # Aggregate by experience level
+    aggregated = {}
+    for row in result.data:
+        level = row["experience_level"]
+        if level not in aggregated:
+            aggregated[level] = row
+
+    return {
+        "career_id": career_id,
+        "salary": aggregated,
+        "data_source": "live" if result.data else "none"
+    }
+```
+
+### 4d. `data-api/requirements.txt`
+
+```
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+supabase==2.4.3
+python-dotenv==1.0.1
+pydantic==2.7.1
+```
+
+---
+
+## Part 5 — Node.js Proxy Integration
+
+The existing Node.js/Express server proxies requests to FastAPI. The React frontend
+never needs to know FastAPI exists — it continues calling `/api/careers/:id/colleges`
+exactly as before.
+
+### 5a. Add to `server/src/config/env.js`
+
+```js
+export const config = {
+  // ... existing fields ...
+  dataApiUrl: process.env.DATA_API_URL || 'http://localhost:8000',
+  dataApiKey: process.env.DATA_API_INTERNAL_KEY || '',
+}
+```
+
+### 5b. Create `server/src/services/dataApi.service.js`
+
+```js
+import { config } from '../config/env.js'
+
+const DATA_API_HEADERS = {
+  'X-Internal-Key': config.dataApiKey,
+  'Content-Type': 'application/json',
+}
+
+async function fetchFromDataApi(path) {
+  try {
+    const response = await fetch(`${config.dataApiUrl}${path}`, {
+      headers: DATA_API_HEADERS,
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    })
+    if (!response.ok) throw new Error(`Data API ${response.status}`)
+    return await response.json()
+  } catch (err) {
+    console.warn(`[DataAPI] ${path} failed: ${err.message} — using fallback`)
+    return null
+  }
+}
+
+export async function getLiveColleges(careerId) {
+  return fetchFromDataApi(`/colleges/${careerId}`)
+}
+
+export async function getLiveSalary(careerId) {
+  return fetchFromDataApi(`/salaries/${careerId}`)
+}
+
+export async function getLiveExams(examSlug) {
+  return fetchFromDataApi(`/exams/${examSlug}`)
+}
+```
+
+### 5c. Update `server/src/controllers/careers.controller.js`
+
+Add live data enrichment to `getCollegesByCareer` with graceful fallback to static data:
+
+```js
+import { getLiveColleges, getLiveSalary } from '../services/dataApi.service.js'
+import { COLLEGES } from '../data/colleges.js'  // existing static fallback
+
+export async function getCollegesByCareer(req, res) {
+  const careerId = req.params.id
+
+  // Try live data first
+  const liveData = await getLiveColleges(careerId)
+
+  if (liveData && liveData.colleges && liveData.colleges.length > 0) {
+    return res.json({
+      colleges: liveData.colleges,
+      careerId,
+      dataSource: 'live',
+      lastUpdated: liveData.colleges[0]?.last_scraped_at || null,
+    })
+  }
+
+  // Fallback to static data — always works even if pipeline has not run yet
+  const staticColleges = COLLEGES[careerId] || []
+  return res.json({
+    colleges: staticColleges,
+    careerId,
+    dataSource: 'static',
+    lastUpdated: null,
+  })
+}
+```
+
+This means the app works perfectly with zero live data (uses static fallback) and
+upgrades silently as the pipeline populates the database.
+
+---
+
+## Part 6 — Deployment
+
+### FastAPI on Render
+
+Add a new Render Web Service for FastAPI:
+- Build command: `pip install -r data-api/requirements.txt`
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Root directory: `data-api/`
+- Environment: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_API_INTERNAL_KEY`
+- Plan: Free tier is fine since only Node.js calls it
+
+### Node.js on Render — Add Environment Variables
+
+Add to the existing Node.js Render service:
+- `DATA_API_URL` = the FastAPI Render URL
+- `DATA_API_INTERNAL_KEY` = a shared secret string (generate a random 32-char string)
+
+---
+
+## Part 7 — Frontend Changes
+
+The frontend changes are minimal by design. The React frontend continues calling
+Node.js endpoints it already knows about. The only visible change is that career
+data now shows a "Live data" indicator when the pipeline has populated records.
+
+### 7a. Update `client/src/components/career/CareerModal.jsx` or the colleges section
+in `CareerDrawer.jsx`
+
+After fetching colleges, check the `dataSource` field in the response:
+
+```jsx
+// In the colleges fetch response handler, add a subtle indicator:
+{colleges.length > 0 && (
+  <div className="flex items-center gap-2 mb-3">
+    <div className={`w-1.5 h-1.5 rounded-full ${dataSource === 'live' ? 'bg-green-500' : 'bg-ink-20'}`} />
+    <span className="text-[10px] text-ink-40 uppercase tracking-widest font-bold">
+      {dataSource === 'live'
+        ? `Updated ${formatRelativeDate(lastUpdated)}`
+        : 'Curated data'}
+    </span>
+  </div>
+)}
+```
+
+Add a simple `formatRelativeDate` utility in `client/src/utils/date.js`:
+
+```js
+export function formatRelativeDate(isoString) {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  const days = Math.floor((Date.now() - date) / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 30) return `${days} days ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)} years ago`
+}
+```
+
+---
+
+## Implementation Order
+
+Do these in sequence. Each step is independently testable.
+
+```
+1. Create supabase/intelligence_schema.sql and run it in Supabase SQL editor
+2. Create pipeline/ directory with all Python files
+3. Test pipeline locally: cd pipeline && python pipeline/runner.py
+4. Verify records appear in Supabase tables
+5. Create data-api/ directory with FastAPI
+6. Test FastAPI locally: cd data-api && uvicorn main:app
+7. Test FastAPI endpoint: curl localhost:8000/colleges/software-engineer
+8. Update server/src/services/dataApi.service.js
+9. Update server/src/controllers/careers.controller.js with fallback logic
+10. Test full chain: React → Node.js → FastAPI → Supabase
+11. Deploy FastAPI to Render
+12. Add DATA_API_URL and DATA_API_INTERNAL_KEY to Node.js Render service
+13. Set up GitHub Actions secrets
+14. Manually trigger the GitHub Actions workflow once to do initial data load
+15. Verify live data appears on pathseeker.app
+16. Add the frontend live/static indicator
+```
+
+---
+
+## Important Constraints
+
+- Do NOT modify `client/src/data/careers.js` — it stays as the source of truth
+  for career metadata. The pipeline adds intelligence ON TOP of it, not replaces it.
+- Do NOT change any existing Node.js routes or response formats — only ADD
+  enrichment to existing responses.
+- The fallback to static data must ALWAYS work. If FastAPI is down or the
+  pipeline has never run, the app must function exactly as before.
+- Never expose the Supabase service role key to the frontend or to any
+  public endpoint. Only the Python pipeline and FastAPI use it.
+- All scraping must include respectful delays (minimum 2 seconds between requests)
+  and must use a descriptive User-Agent string identifying the bot.
+- The pipeline must be idempotent — running it twice must not create duplicate records.
