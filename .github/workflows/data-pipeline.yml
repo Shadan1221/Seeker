@@ -44,13 +44,13 @@ jobs:
           playwright install-deps chromium
 
       - name: Run pipeline
-        working-directory: pipeline
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PIPELINE_RUN_TYPE: ${{ github.event.inputs.run_type || 'incremental' }}
-        run: python pipeline/runner.py
+          PYTHONPATH: ${{ github.workspace }}/pipeline
+        run: python pipeline/pipeline/runner.py
 
       - name: Upload pipeline logs
         if: always()
