@@ -23,4 +23,6 @@ export const config = {
   groqApiKey: requireEnv('GROQ_API_KEY'),
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()),
   isDev: process.env.NODE_ENV !== 'production',
+  dataApiUrl: process.env.DATA_API_URL || 'http://localhost:8000',
+  dataApiKey: process.env.DATA_API_INTERNAL_KEY || '',
 }

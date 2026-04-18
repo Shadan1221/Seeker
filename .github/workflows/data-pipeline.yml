@@ -1,0 +1,61 @@
+name: Seeker Data Pipeline
+
+on:
+  schedule:
+    # Run incremental refresh every Monday at 2 AM IST (8:30 PM Sunday UTC)
+    - cron: '30 20 * * 0'
+    # Run salary refresh every 1st of the month at 3 AM IST
+    - cron: '30 21 1 * *'
+  workflow_dispatch:
+    inputs:
+      run_type:
+        description: 'Pipeline run type'
+        required: true
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pipeline/requirements.txt') }}
+
+      - name: Install dependencies
+        working-directory: pipeline
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run pipeline
+        working-directory: pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PIPELINE_RUN_TYPE: ${{ github.event.inputs.run_type || 'incremental' }}
+        run: python -m pipeline.runner
+
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: pipeline/logs/
+          retention-days: 14
