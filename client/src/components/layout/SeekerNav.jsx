@@ -56,7 +56,7 @@ export default function SeekerNav() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -20, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed top-0 left-0 right-0 z-[120] flex items-center justify-between px-8 py-5"
+          className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-8 py-4 bg-paper/90 backdrop-blur-md border-b border-ink/5"
         >
           {/* Logo mark */}
           <button

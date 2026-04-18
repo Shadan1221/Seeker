@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
-export default function FloatingPaths({ position = 1 }) {
+export default function FloatingPaths({ position = 1, className = "" }) {
     const pos = position || 1;
     
     const allPaths = useMemo(() => {
-        // Reduced structured paths count to 15 for better performance
-        const structuredPaths = Array.from({ length: 15 }, (_, i) => ({
+        const structuredPaths = Array.from({ length: 12 }, (_, i) => ({
             id: `struct-${i}`,
             d: `M-${380 - i * 5 * pos} -${189 + i * 6}C-${
                 380 - i * 5 * pos
@@ -17,11 +16,10 @@ export default function FloatingPaths({ position = 1 }) {
             } ${875 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6}`,
             width: 0.5 + i * 0.03,
             opacity: 0.25 + i * 0.03,
-            duration: 20 + Math.random() * 10
+            duration: 35 + i * 3
         }));
 
-        // Reduced random paths count to 5
-        const randomPaths = Array.from({ length: 5 }, (_, i) => {
+        const randomPaths = Array.from({ length: 3 }, (_, i) => {
             const startX = Math.random() * 1000 - 200;
             const startY = Math.random() * 1000 - 200;
             const control1X = startX + (Math.random() * 400 - 200);
@@ -36,7 +34,7 @@ export default function FloatingPaths({ position = 1 }) {
                 d: `M${startX} ${startY} C${control1X} ${control1Y} ${control2X} ${control2Y} ${endX} ${endY}`,
                 width: 0.2 + Math.random() * 0.5,
                 opacity: 0.1 + Math.random() * 0.1,
-                duration: 15 + Math.random() * 15
+                duration: 40 + Math.random() * 20
             };
         });
 
@@ -44,14 +42,14 @@ export default function FloatingPaths({ position = 1 }) {
     }, [pos]);
 
     return (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className={`absolute inset-0 pointer-events-none overflow-hidden ${className}`}>
             <svg
-                className="w-full h-full text-ink-30 dark:text-white opacity-50"
+                className="w-full h-full text-ink-60 dark:text-white opacity-90"
                 viewBox="0 0 696 316"
                 fill="none"
                 preserveAspectRatio="xMidYMid slice"
+                aria-hidden="true"
             >
-                <title>Background Paths</title>
                 {allPaths.map((path) => (
                     <motion.path
                         key={path.id}

@@ -109,9 +109,9 @@ export default function Splash() {
                  <line x1="50" y1="10" x2="50" y2="-5" stroke="#0D0D0D" strokeWidth="1.5" />
                  <motion.path d="M 50 -5 L 65 -10 L 50 -15 Z" fill="#E8572A" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 2.5, duration: 0.3 }} />
                </motion.g>
-               {[ { x: 30, y: 100, delay: 0.6 }, { x: 70, y: 55, delay: 1.4 }].map((h, i) => (
-                 <motion.circle key={i} cx={h.x} cy={h.y} r="2" fill="#0D0D0D" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 0.3 }} transition={{ delay: h.delay }} />
-               ))}
+                {[ { x: 30.6, y: 100, delay: 0.6 }, { x: 65.7, y: 55, delay: 1.4 }].map((h, i) => (
+                  <motion.circle key={i} cx={h.x} cy={h.y} r="2" fill="#0D0D0D" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 0.3 }} transition={{ delay: h.delay }} />
+                ))}
             </svg>
           </div>
           <div className="text-center space-y-4">
@@ -189,7 +189,7 @@ export default function Splash() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-8 relative z-30">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.5 }} className="group relative bg-ink p-[1px] rounded-2xl overflow-hidden shadow-2xl hover:shadow-accent/20 transition-all duration-500">
-                <button data-tour="start-discovery" onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
+                <button onClick={() => navigate('/quiz')} className="relative rounded-[1.1rem] px-10 py-5 text-lg font-bold tracking-widest uppercase bg-ink text-paper hover:bg-ink-60 transition-all duration-300 flex items-center gap-4">
                   <span className="opacity-90 group-hover:opacity-100">Start Discovery</span>
                   <span className="ml-2 group-hover:translate-x-2 transition-transform duration-300"><Icon name="arrow_forward" size={20} /></span>
                 </button>

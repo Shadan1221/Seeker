@@ -32,8 +32,8 @@ export default function CustomCursor() {
       dotY = mouseY
       dot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0)`
       
-      ringX = lerp(ringX, mouseX, 0.15)
-      ringY = lerp(ringY, mouseY, 0.15)
+      ringX = lerp(ringX, mouseX, 0.35)
+      ringY = lerp(ringY, mouseY, 0.35)
       ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`
       
       raf = requestAnimationFrame(animate)
@@ -74,7 +74,7 @@ export default function CustomCursor() {
       />
       <div 
         ref={ringRef} 
-        className="fixed top-0 left-0 w-8 h-8 border border-accent rounded-full pointer-events-none z-[9998] transition-transform duration-300 ease-out"
+        className="fixed top-0 left-0 w-8 h-8 border border-accent rounded-full pointer-events-none z-[9998]"
         style={{ 
           willChange: 'transform',
           marginLeft: '-13px',

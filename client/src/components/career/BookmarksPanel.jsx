@@ -43,7 +43,7 @@ export default function BookmarksPanel() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setBookmarksOpen(false)}
-            className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-[200]"
           />
 
           {/* Panel */}
@@ -52,7 +52,7 @@ export default function BookmarksPanel() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-screen w-full max-w-sm bg-paper border-l border-ink-10 z-[101] shadow-2xl flex flex-col"
+            className="fixed right-0 top-0 h-screen w-full max-w-sm bg-paper border-l border-ink-10 z-[201] shadow-2xl flex flex-col"
           >
             <div className="p-6 border-b border-ink-5 flex items-center justify-between">
               <div className="flex items-center gap-3">

@@ -226,6 +226,28 @@ export default function PathMap() {
   const youX = 1150
   const youY = 1350
 
+  if (isLoading || !data) {
+    return (
+      <div className="fixed inset-0 bg-paper overflow-hidden font-sans select-none z-0">
+        <FloatingPaths position={1} />
+        <SeekerNav />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+           <div className="flex flex-col items-center gap-6">
+              <div className="relative flex justify-center items-center w-24 h-24">
+                 <div className="absolute inset-0 rounded-full border border-ink/10 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                 <div className="absolute inset-4 rounded-full border border-ink/20 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite_0.5s]" />
+                 <div className="w-4 h-4 rounded-full bg-ink animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                 <div className="h-4 w-32 bg-ink-10/50 rounded animate-pulse" />
+                 <div className="h-3 w-48 bg-ink-5 rounded animate-pulse" />
+              </div>
+           </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div 
       className="fixed inset-0 bg-paper overflow-hidden font-sans select-none z-0"

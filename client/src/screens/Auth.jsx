@@ -66,6 +66,8 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [welcomeMode, setWelcomeMode] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
+  const [takenUsernames, setTakenUsernames] = useState([])
 
   // Form states
   const [formData, setFormData] = useState({
@@ -89,18 +91,18 @@ export default function Auth() {
 
   // Redirect if already authenticated and profile is complete
   useEffect(() => {
-    // Wait until auth bootstrap is complete so quiz/profile state is accurate.
+    // Wait until auth bootstrap is complete so state is accurate.
     if (!authLoading && user && profile && !welcomeMode) {
-      navigate(quizCompleted ? '/paths' : '/quiz')
+      navigate('/welcome')
     }
-  }, [user, profile, navigate, quizCompleted, welcomeMode, authLoading])
+  }, [user, profile, navigate, welcomeMode, authLoading])
 
-  // Handle step 2 from URL
+  // Handle step 2 from URL (only if not loading auth state)
   useEffect(() => {
-    if (user && !profile && step !== 2) {
+    if (!authLoading && user && !profile && step !== 2) {
       setSearchParams({ mode: 'signup', step: 2 })
     }
-  }, [user, profile, step, setSearchParams])
+  }, [user, profile, step, setSearchParams, authLoading])
 
   const checkUsername = useCallback(debounce(async (username) => {
     const requestId = ++usernameCheckRequestId.current
@@ -108,6 +110,13 @@ export default function Auth() {
     if (username.length < 3) {
       setCheckingUsername(false)
       setUsernameAvailable(null)
+      return
+    }
+
+    if (takenUsernames.includes(username)) {
+      setCheckingUsername(false)
+      setUsernameAvailable(false)
+      setUsernameError('Username is already taken.')
       return
     }
 
@@ -178,6 +187,7 @@ export default function Auth() {
     if (name === 'username') {
       const filteredValue = value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()
       setFormData(prev => ({ ...prev, [name]: filteredValue }))
+      if (usernameError) setUsernameError('')
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
     }
@@ -257,7 +267,13 @@ export default function Auth() {
 
     const { error } = await saveProfile(profileData)
     if (error) {
-      setError(error.message)
+      if (error.message.includes('profiles_username_key') || error.message.includes('already exists')) {
+        setTakenUsernames(prev => [...prev, formData.username])
+        setUsernameAvailable(false)
+        setUsernameError('This username is already taken. Please choose another one.')
+      } else {
+        setError(error.message)
+      }
       setFormLoading(false)
     } else {
       // Tour: mark as new user for onboarding tour (sign-up flow only)
@@ -557,6 +573,16 @@ export default function Auth() {
                   <p className="text-[10px] text-ink-40 uppercase tracking-wider mt-1">
                     This is how you'll appear on Seeker
                   </p>
+                  {usernameError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-accent text-xs font-bold mt-2 flex items-center gap-1.5"
+                    >
+                      <Icon name="error" size={14} />
+                      {usernameError}
+                    </motion.p>
+                  )}
                 </div>
 
                 {/* Age */}

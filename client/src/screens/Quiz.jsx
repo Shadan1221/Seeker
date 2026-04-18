@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -27,15 +27,19 @@ export default function Quiz() {
   const customAnswers = useAppStore(s => s.customAnswers)
   const recordCustomAnswer = useAppStore(s => s.recordCustomAnswer)
 
-  // Restore state if returning
+  const hasRestored = useRef(false)
+
+  // Restore state if returning (only once on mount)
   useEffect(() => {
-    if (questions.length > 0) {
-      const answeredCount = Object.keys(quizAnswers).length + Object.keys(customAnswers).length + skippedQuestions.length
+    if (questions.length > 0 && !hasRestored.current) {
+      hasRestored.current = true
+      const state = useAppStore.getState()
+      const answeredCount = Object.keys(state.quizAnswers).length + Object.keys(state.customAnswers).length + state.skippedQuestions.length
       if (answeredCount > 0 && answeredCount < questions.length) {
         setCurrentIndex(answeredCount)
       }
     }
-  }, [questions.length, quizAnswers, customAnswers, skippedQuestions])
+  }, [questions.length])
 
   useEffect(() => {
     setShowCustomInput(false)
@@ -111,8 +115,50 @@ export default function Quiz() {
 
   if (isLoading || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-paper flex items-center justify-center">
-        <span className="font-serif text-2xl text-ink-30 animate-pulse">Loading paths...</span>
+      <div className="h-screen bg-paper flex flex-col md:flex-row overflow-hidden font-sans relative">
+        <FloatingPaths />
+        {/* LEFT PANEL SKELETON */}
+        <div className="w-full md:w-[35%] p-6 md:p-12 flex flex-col justify-between z-10 border-r border-ink-5">
+          <div className="flex flex-col h-full justify-between">
+            <div>
+              <div className="w-32 h-4 bg-ink-10/40 animate-pulse rounded mb-12" />
+              <div className="w-48 h-24 md:h-32 bg-ink-5 animate-pulse rounded mb-4" />
+              <div className="w-24 h-3 bg-ink-10/40 animate-pulse rounded" />
+            </div>
+            <div className="hidden md:flex flex-wrap gap-2 py-4">
+               {[...Array(8)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-ink-10/40 animate-pulse" />)}
+            </div>
+          </div>
+        </div>
+        
+        {/* RIGHT PANEL SKELETON */}
+        <div className="flex-1 p-4 md:p-8 md:pl-16 flex flex-col z-10 relative">
+           <div className="max-w-5xl w-full mx-auto">
+             <div className="mb-8 mt-2">
+                <div className="w-10 h-10 rounded-2xl bg-ink-5 animate-pulse mb-4" />
+                <div className="w-full max-w-2xl h-10 md:h-12 bg-ink-10/40 animate-pulse rounded mb-3" />
+                <div className="w-3/4 max-w-xl h-8 md:h-10 bg-ink-5 animate-pulse rounded" />
+             </div>
+             
+             <div className="flex flex-col lg:flex-row gap-6 items-start">
+                <div className="flex-[2] w-full grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-3">
+                   {[...Array(4)].map((_, i) => (
+                     <div key={i} className="p-4 md:p-5 border border-ink-5 bg-white/30 animate-pulse flex items-start gap-4 h-32">
+                        <div className="shrink-0 w-8 h-8 border border-ink-10 bg-ink-5" />
+                        <div className="w-full mt-1">
+                           <div className="w-3/4 h-4 bg-ink-10/40 rounded mb-3" />
+                           <div className="w-full h-2.5 bg-ink-5 rounded mb-2" />
+                           <div className="w-5/6 h-2.5 bg-ink-5 rounded" />
+                        </div>
+                     </div>
+                   ))}
+                </div>
+                <div className="flex-1 w-full lg:max-w-[300px]">
+                   <div className="w-full h-32 bg-surface/50 border border-ink-5 rounded-2xl animate-pulse" />
+                </div>
+             </div>
+           </div>
+        </div>
       </div>
     )
   }
@@ -131,12 +177,26 @@ export default function Quiz() {
       <div className="w-full md:w-[35%] p-6 md:p-12 flex flex-col justify-between z-10 border-r border-ink-5">
         <div className="flex flex-col h-full justify-between">
           <div>
-            <button 
-              onClick={() => navigate('/')}
-              className="text-xs font-bold tracking-[0.2em] text-ink-30 hover:text-accent transition-colors flex items-center gap-2 group mb-12 uppercase"
-            >
-               <Icon name="arrow_back" size={14} className="group-hover:-translate-x-1 transition-transform" /> Exit Discovery
-            </button>
+            <div className="flex flex-col gap-4 mb-12">
+              <button 
+                onClick={() => navigate('/')}
+                className="text-xs font-bold tracking-[0.2em] text-ink-30 hover:text-accent transition-colors flex items-center gap-2 group uppercase w-fit"
+              >
+                 <Icon name="close" size={14} className="group-hover:text-accent transition-colors" /> Exit Discovery
+              </button>
+
+              {currentIndex > 0 && (
+                <button 
+                  onClick={() => {
+                    setCurrentIndex(prev => prev - 1)
+                    setSelectedId(null)
+                  }}
+                  className="text-xs font-bold tracking-[0.2em] text-ink-30 hover:text-accent transition-colors flex items-center gap-2 group uppercase w-fit"
+                >
+                   <Icon name="arrow_back" size={14} className="group-hover:-translate-x-1 transition-transform" /> Previous Question
+                </button>
+              )}
+            </div>
 
             <motion.div 
               key={currentIndex}
@@ -177,20 +237,25 @@ export default function Quiz() {
                 const isAnswered = quizAnswers[quest.id.toString()] || customAnswers[quest.id.toString()]
                 
                 return (
-                  <div 
+                  <button 
                     key={i} 
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-500 flex items-center justify-center text-[8px] font-bold ${
+                    onClick={() => {
+                      setCurrentIndex(i)
+                      setSelectedId(null)
+                    }}
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-500 flex items-center justify-center text-[8px] font-bold cursor-pointer hover:scale-150 relative ${
                        isSkipped 
                         ? 'bg-ink-10 border border-ink-20 text-ink-30'
                         : isAnswered 
-                          ? 'bg-ink' 
+                          ? 'bg-ink hover:bg-accent' 
                           : i === currentIndex 
                             ? 'bg-accent w-4 shadow-[0_0_10px_rgba(232,87,42,0.3)]' 
-                            : 'bg-ink-10'
-                    }`} 
+                            : 'bg-ink-10 hover:bg-ink-30'
+                    }`}
+                    title={isAnswered ? 'Go back to this question' : ''}
                   >
                     {isSkipped && '×'}
-                  </div>
+                  </button>
                 )
              })}
           </div>
@@ -358,16 +423,20 @@ export default function Quiz() {
                const isAnswered = quizAnswers[quest.id.toString()] || customAnswers[quest.id.toString()]
 
                return (
-                 <div 
+                 <button 
                    key={i} 
-                   className={`shrink-0 w-1 h-1 rounded-full transition-all duration-500 flex items-center justify-center text-[6px] font-bold ${
+                   onClick={() => {
+                     setCurrentIndex(i)
+                     setSelectedId(null)
+                   }}
+                   className={`shrink-0 w-1.5 h-1.5 rounded-full transition-all duration-500 flex items-center justify-center text-[6px] font-bold cursor-pointer pl-2 pr-2 ${
                       isSkipped
                         ? 'bg-ink-10 border border-ink-20 text-ink-30'
-                        : isAnswered ? 'bg-ink/40' : i === currentIndex ? 'bg-accent w-3' : 'bg-ink-10'
+                        : isAnswered ? 'bg-ink/40' : i === currentIndex ? 'bg-accent w-3 h-1.5' : 'bg-ink-10'
                    }`} 
                  >
                    {isSkipped && '×'}
-                 </div>
+                 </button>
                )
             })}
          </div>

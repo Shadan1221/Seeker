@@ -46,12 +46,15 @@ export function ProtectedRoute({ children, requireQuiz = false }) {
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
-  if (user && !profile) {
-    return <Navigate to="/?mode=signup&step=2" replace />
-  }
+  // Only check profile and quiz requirements when we have finished loading the auth data
+  if (!authLoading) {
+    if (user && !profile) {
+      return <Navigate to="/?mode=signup&step=2" replace />
+    }
 
-  if (requireQuiz && !quizCompleted) {
-    return <Navigate to="/quiz" replace />
+    if (requireQuiz && !quizCompleted) {
+      return <Navigate to="/quiz" replace />
+    }
   }
 
   return children
