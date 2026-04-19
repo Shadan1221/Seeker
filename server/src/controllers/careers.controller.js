@@ -2,7 +2,7 @@ import { CAREERS } from '../data/careers.js'
 import { COLLEGES } from '../data/colleges.js'
 import { STREAMS } from '../data/streams.js'
 import { buildComparison, getComparisonExplanation } from '../services/comparison.service.js'
-import { getLiveColleges, getLiveSalary } from '../services/dataApi.service.js'
+import { getLiveColleges, getLiveSalary, getLiveExamsForCareer } from '../services/dataApi.service.js'
 
 export function getAllCareers(req, res) {
   const { category, stream, ids } = req.query
@@ -78,6 +78,57 @@ export async function getCollegesByCareer(req, res) {
   const staticColleges = COLLEGES[careerId] || []
   return res.json({
     colleges: staticColleges,
+    careerId,
+    dataSource: 'static',
+    lastUpdated: null,
+  })
+}
+
+export async function getExamsByCareer(req, res) {
+  const careerId = req.params.id
+
+  // Try live exam data from FastAPI → Supabase
+  const liveData = await getLiveExamsForCareer(careerId)
+  if (liveData && liveData.exams && liveData.exams.length > 0) {
+    return res.json({
+      exams: liveData.exams,
+      careerId,
+      dataSource: 'live',
+      lastUpdated: liveData.exams[0]?.last_scraped_at || null,
+    })
+  }
+
+  // Fallback: derive exam names from static career data
+  const career = CAREERS.find(c => c.id === careerId)
+  const staticExams = career?.education?.entrance_exams?.map(name => ({ exam_name: name })) || []
+  return res.json({
+    exams: staticExams,
+    careerId,
+    dataSource: 'static',
+    lastUpdated: null,
+  })
+}
+
+export async function getSalaryByCareer(req, res) {
+  const careerId = req.params.id
+
+  // Try live salary data from FastAPI → Supabase
+  const liveData = await getLiveSalary(careerId)
+  if (liveData && liveData.salary_tiers && liveData.salary_tiers.length > 0) {
+    return res.json({
+      salary_tiers: liveData.salary_tiers,
+      careerId,
+      dataSource: 'live',
+      lastUpdated: liveData.salary_tiers[0]?.last_verified || null,
+    })
+  }
+
+  // Fallback: return static salary strings from careers.js
+  const career = CAREERS.find(c => c.id === careerId)
+  const staticSalary = career?.salary || {}
+  return res.json({
+    salary_tiers: null,
+    staticSalary,
     careerId,
     dataSource: 'static',
     lastUpdated: null,

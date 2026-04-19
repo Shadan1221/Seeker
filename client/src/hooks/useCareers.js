@@ -7,6 +7,12 @@ const CAREER_CACHE = {
   gcTime: 30 * 60 * 1000,       // 30 minutes
 }
 
+// Intelligence data — refresh more aggressively (3 min stale)
+const INTEL_CACHE = {
+  staleTime: 3 * 60 * 1000,
+  gcTime: 15 * 60 * 1000,
+}
+
 export function useCareers(params = {}) {
   return useQuery({ queryKey: ['careers', params], queryFn: () => careersApi.getAll(params), ...CAREER_CACHE })
 }
@@ -25,7 +31,15 @@ export function useRecommendedCareers(ids) {
 }
 
 export function useColleges(careerId) {
-  return useQuery({ queryKey: ['colleges', careerId], queryFn: () => careersApi.getColleges(careerId), enabled: !!careerId, staleTime: 5 * 60 * 1000 })
+  return useQuery({ queryKey: ['colleges', careerId], queryFn: () => careersApi.getColleges(careerId), enabled: !!careerId, ...INTEL_CACHE })
+}
+
+export function useExams(careerId) {
+  return useQuery({ queryKey: ['exams', careerId], queryFn: () => careersApi.getExams(careerId), enabled: !!careerId, ...INTEL_CACHE })
+}
+
+export function useSalary(careerId) {
+  return useQuery({ queryKey: ['salary', careerId], queryFn: () => careersApi.getSalary(careerId), enabled: !!careerId, ...INTEL_CACHE })
 }
 
 export function useStreams() {

@@ -7,6 +7,8 @@ import { useChat } from '../../hooks/useChat.js'
 import React, { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useColleges, useExams, useSalary } from '../../hooks/useCareers.js'
+import { formatRelativeDate } from '../../utils/date.js'
 
 const buildQuizContext = (career, store) => {
   const { quizCompleted, quizAnswers, customAnswers, skippedQuestions, careerScores } = store
@@ -415,6 +417,20 @@ function TabOverview({ career }) {
 
 function TabEducation({ career }) {
   const ed = career.education
+  const { data: collegeData, isLoading: collegesLoading } = useColleges(career.id)
+  const { data: examData } = useExams(career.id)
+  const liveColleges = collegeData?.colleges || []
+  const liveExams = examData?.exams || []
+  const examDataSource = examData?.dataSource || 'static'
+  const examLastUpdated = examData?.lastUpdated || null
+  const collegeDataSource = collegeData?.dataSource || 'static'
+  const collegeLastUpdated = collegeData?.lastUpdated || null
+
+  // Use live colleges if available, fallback to static
+  const displayColleges = liveColleges.length > 0 ? liveColleges : (career.colleges || [])
+  // Live exams with detailed data (has application_start field), vs static (just name)
+  const hasLiveExamDetails = liveExams.some(e => e.application_start || e.exam_date)
+
   return (
     <div className="space-y-10 pb-10">
       <div className="relative border-l-2 border-ink-5 ml-4 pl-10 py-2 space-y-12">
@@ -430,20 +446,73 @@ function TabEducation({ career }) {
            <div className="absolute -left-[51px] top-0 w-10 h-10 bg-paper border-2 border-ink-10 rounded-2xl flex items-center justify-center text-ink-30 shadow-sm">
               <Icon name="edit_note" size={20} />
            </div>
-           <span className="text-[10px] font-black tracking-[0.2em] text-ink-30 uppercase block mb-3">Entrance Gates</span>
-           <div className="flex flex-wrap gap-2.5">
-             {ed.entrance_exams.map(e => (
-               <a 
-                 key={e} 
-                 href={`https://www.google.com/search?q=${encodeURIComponent(e + ' official exam India')}`}
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="text-xs font-bold px-4 py-2 bg-surface border border-ink-10 rounded-xl text-ink hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
-               >
-                 {e} ↗
-               </a>
-             ))}
+           <div className="flex items-center gap-3 mb-3">
+             <span className="text-[10px] font-black tracking-[0.2em] text-ink-30 uppercase">Entrance Gates</span>
+             {examDataSource === 'live' && (
+               <div className="flex items-center gap-1.5">
+                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                 <span className="text-[9px] text-ink-30 uppercase tracking-widest font-bold">Live dates</span>
+               </div>
+             )}
            </div>
+           {/* Live exam cards with dates */}
+           {hasLiveExamDetails ? (
+             <div className="flex flex-col gap-3">
+               {liveExams.map((exam, i) => (
+                 <a
+                   key={exam.exam_slug || i}
+                   href={exam.official_url || `https://www.google.com/search?q=${encodeURIComponent((exam.exam_name || '') + ' official exam India')}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="p-4 bg-surface border border-ink-5 rounded-2xl hover:border-accent/30 transition-colors group"
+                 >
+                   <div className="flex items-start justify-between gap-2">
+                     <div>
+                       <div className="text-sm font-bold text-ink group-hover:text-accent transition-colors">{exam.exam_name}</div>
+                       {exam.conducting_body && <div className="text-xs text-ink-40 mt-0.5">{exam.conducting_body}</div>}
+                     </div>
+                     <Icon name="open_in_new" size={13} className="text-ink-20 group-hover:text-accent shrink-0 mt-0.5" />
+                   </div>
+                   {(exam.application_start || exam.exam_date || exam.result_date) && (
+                     <div className="mt-3 grid grid-cols-3 gap-2">
+                       {exam.application_start && (
+                         <div className="text-center p-2 bg-paper rounded-xl border border-ink-5">
+                           <div className="text-[9px] font-black text-ink-30 uppercase tracking-widest mb-1">Apply from</div>
+                           <div className="text-[11px] font-bold text-ink">{new Date(exam.application_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                         </div>
+                       )}
+                       {exam.exam_date && (
+                         <div className="text-center p-2 bg-paper rounded-xl border border-ink-5">
+                           <div className="text-[9px] font-black text-ink-30 uppercase tracking-widest mb-1">Exam</div>
+                           <div className="text-[11px] font-bold text-ink">{new Date(exam.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                         </div>
+                       )}
+                       {exam.result_date && (
+                         <div className="text-center p-2 bg-paper rounded-xl border border-ink-5">
+                           <div className="text-[9px] font-black text-ink-30 uppercase tracking-widest mb-1">Result</div>
+                           <div className="text-[11px] font-bold text-ink">{new Date(exam.result_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                         </div>
+                       )}
+                     </div>
+                   )}
+                 </a>
+               ))}
+             </div>
+           ) : (
+             <div className="flex flex-wrap gap-2.5">
+               {ed.entrance_exams.map(e => (
+                 <a
+                   key={e}
+                   href={`https://www.google.com/search?q=${encodeURIComponent(e + ' official exam India')}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="text-xs font-bold px-4 py-2 bg-surface border border-ink-10 rounded-xl text-ink hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
+                 >
+                   {e} ↗
+                 </a>
+               ))}
+             </div>
+           )}
         </div>
 
         <div className="relative">
@@ -470,6 +539,54 @@ function TabEducation({ career }) {
         )}
       </div>
 
+      {/* Top Colleges — Live or Static */}
+      {displayColleges.length > 0 && (
+        <div className="pt-8 border-t border-ink-10">
+          <div className="flex items-center gap-3 mb-5">
+            <h3 className="text-xs font-bold tracking-[0.2em] text-ink-30 uppercase">Top Colleges in India</h3>
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${collegeDataSource === 'live' ? 'bg-green-500 animate-pulse' : 'bg-ink-20'}`} />
+              <span className="text-[10px] text-ink-30 uppercase tracking-widest font-bold">
+                {collegeDataSource === 'live' ? `Updated ${formatRelativeDate(collegeLastUpdated)}` : 'Curated data'}
+              </span>
+            </div>
+          </div>
+          {collegesLoading && (
+            <div className="flex gap-2 items-center text-xs text-ink-30 mb-4">
+              <div className="w-3 h-3 border border-ink-20 rounded-full border-t-accent animate-spin" />
+              Fetching latest rankings...
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {displayColleges.slice(0, 8).map((c, i) => {
+              const name = c.college_name || c.name
+              const city = c.city
+              const rank = c.nirf_rank
+              return (
+                <a
+                  key={name || i}
+                  href={`https://www.google.com/search?q=${encodeURIComponent((name || '') + ' college India admission')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 p-4 bg-surface rounded-2xl border border-ink-5 hover:border-accent/30 transition-colors group"
+                >
+                  {rank && (
+                    <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-1 rounded-lg shrink-0">
+                      #{rank}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-ink group-hover:text-accent transition-colors truncate">{name}</div>
+                    {city && <div className="text-xs text-ink-40 mt-0.5">{city}</div>}
+                  </div>
+                  <Icon name="open_in_new" size={14} className="text-ink-20 group-hover:text-accent transition-colors shrink-0 mt-0.5" />
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="pt-8 border-t border-ink-10">
         <h3 className="text-xs font-bold tracking-[0.2em] text-ink-30 uppercase mb-5">Curriculum Focus</h3>
         <div className="flex flex-wrap gap-2.5">
@@ -484,6 +601,7 @@ function TabEducation({ career }) {
   )
 }
 
+
 function getProgressionDescription(career, step, index) {
   const total = career.progression.length
   if (index === 0) return `The entry point into ${career.title}. You'll be learning fundamentals, working under supervision, and building core competencies. Typically reached after completing your primary qualification.`
@@ -496,20 +614,51 @@ function getProgressionDescription(career, step, index) {
 
 function TabPath({ career }) {
   const [expandedStep, setExpandedStep] = useState(null)
+  const { data: salaryData } = useSalary(career.id)
+  const liveTiers = salaryData?.salary_tiers || []
+  const salaryDataSource = salaryData?.dataSource || 'static'
+  const salaryLastUpdated = salaryData?.lastUpdated || null
+
+  // Map experience_level to display label
+  const getTier = (level) => liveTiers.find(t => t.experience_level === level)
+  const fresherTier = getTier('fresher')
+  const midTier = getTier('mid')
+  const seniorTier = getTier('senior')
+  const formatLPA = (min, max) => min && max ? `Rs. ${min}–${max} LPA` : min ? `Rs. ${min}+ LPA` : null
+
   return (
     <div className="space-y-10 pb-10">
+      {/* Salary header with live indicator */}
+      <div className="flex items-center gap-3">
+        <h3 className="text-xs font-bold tracking-[0.2em] text-ink-30 uppercase">Compensation Intelligence</h3>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${salaryDataSource === 'live' ? 'bg-green-500 animate-pulse' : 'bg-ink-20'}`} />
+          <span className="text-[9px] text-ink-30 uppercase tracking-widest font-bold">
+            {salaryDataSource === 'live' ? `AmbitionBox · ${formatRelativeDate(salaryLastUpdated)}` : 'Curated estimate'}
+          </span>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="p-6 bg-surface rounded-[24px] border border-ink-5">
            <div className="text-[10px] font-black text-ink-30 uppercase tracking-[0.1em] mb-2">Fresher</div>
-           <div className="font-serif text-2xl text-ink">{career.salary.fresher}</div>
+           <div className="font-serif text-2xl text-ink">
+             {fresherTier ? formatLPA(fresherTier.salary_min_lpa, fresherTier.salary_max_lpa) : career.salary.fresher}
+           </div>
+           {fresherTier?.salary_median_lpa && <div className="text-xs text-ink-40 mt-1">Median: Rs. {fresherTier.salary_median_lpa} LPA</div>}
         </div>
         <div className="p-6 bg-surface rounded-[24px] border border-ink-5">
            <div className="text-[10px] font-black text-ink-30 uppercase tracking-[0.1em] mb-2">Mid-Level</div>
-           <div className="font-serif text-2xl text-ink">{career.salary.mid}</div>
+           <div className="font-serif text-2xl text-ink">
+             {midTier ? formatLPA(midTier.salary_min_lpa, midTier.salary_max_lpa) : career.salary.mid}
+           </div>
+           {midTier?.salary_median_lpa && <div className="text-xs text-ink-40 mt-1">Median: Rs. {midTier.salary_median_lpa} LPA</div>}
         </div>
         <div className="p-6 rounded-[24px] border shadow-lg" style={{ backgroundColor: `${career.accent}08`, borderColor: `${career.accent}30` }}>
            <div className="text-[10px] font-black uppercase tracking-[0.1em] mb-2" style={{ color: career.accent }}>Senior</div>
-           <div className="font-serif text-2xl text-ink">{career.salary.senior}</div>
+           <div className="font-serif text-2xl text-ink">
+             {seniorTier ? formatLPA(seniorTier.salary_min_lpa, seniorTier.salary_max_lpa) : career.salary.senior}
+           </div>
+           {seniorTier?.salary_median_lpa && <div className="text-xs text-ink-40 mt-1">Median: Rs. {seniorTier.salary_median_lpa} LPA</div>}
         </div>
       </div>
       <p className="text-xs text-ink-60 italic leading-relaxed bg-paper p-4 rounded-xl border border-ink-10">
